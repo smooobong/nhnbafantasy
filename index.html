@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Fantasy Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --nba-blue: #1d428a;
+    --nba-red: #c8102e;
+    --nba-white: #ffffff;
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #111118;
+    --bg-card: #16161f;
+    --bg-hover: #1e1e2a;
+    --border: #2a2a3a;
+    --text-primary: #ffffff;
+    --text-secondary: #8888aa;
+    --text-muted: #555570;
+    --accent-blue: #4a90d9;
+    --accent-gold: #f5a623;
+    --accent-red: #e53e3e;
+    --team-a: #1d428a;
+    --team-b: #c8102e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; min-height: 100vh; background: var(--bg-primary); color: var(--text-primary); font-family: 'Barlow', sans-serif; overflow-x: hidden; }
+
+  /* ===== SCREEN MANAGEMENT ===== */
+  .screen { display: none; width: 100%; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ===== INTRO SCREEN ===== */
+  #screen-intro {
+    background: var(--bg-primary);
+    position: relative;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+  }
+  .intro-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 60%, rgba(29,66,138,0.25) 0%, transparent 65%),
+                radial-gradient(ellipse at 20% 50%, rgba(200,16,46,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(200,16,46,0.12) 0%, transparent 50%);
+  }
+  .intro-bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px),
+                      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px);
+  }
+  .players-container {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    pointer-events: none; padding: 0 2%;
+  }
+  .player-silhouette {
+    width: 22%; max-width: 200px;
+    opacity: 0.18;
+    filter: brightness(0.4) contrast(1.5);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .player-silhouette img { width: 100%; object-fit: contain; }
+  .player-silhouette.left-1 { transform: scaleX(-1) rotate(-5deg); }
+  .player-silhouette.left-2 { transform: scaleX(-1) rotate(-2deg); }
+  .player-silhouette.right-1 { transform: rotate(2deg); }
+  .player-silhouette.right-2 { transform: rotate(5deg); }
+
+  .intro-center {
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 16px; text-align: center; padding: 40px 20px;
+  }
+  .nba-logo-area { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+  .nba-logo-badge {
+    width: 52px; height: 68px;
+    background: linear-gradient(135deg, var(--nba-blue), #2a5cbf);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; color: white;
+    position: relative; overflow: hidden;
+    box-shadow: 0 0 30px rgba(29,66,138,0.6);
+  }
+  .nba-logo-badge::after {
+    content: '';
+    position: absolute; right: -4px; top: 0; bottom: 0; width: 20px;
+    background: var(--nba-red);
+    clip-path: polygon(30% 0, 100% 0, 100% 100%, 0% 100%);
+  }
+  .nba-logo-badge span { position: relative; z-index: 1; }
+  .game-title-main {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 8vw, 88px);
+    line-height: 0.9;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0b4d0 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .game-subtitle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(14px, 2.5vw, 20px);
+    letter-spacing: 6px;
+    color: var(--accent-gold);
+    text-transform: uppercase;
+  }
+  .game-desc {
+    font-size: 14px; color: var(--text-secondary);
+    max-width: 420px; line-height: 1.6;
+  }
+  .btn-primary {
+    margin-top: 16px;
+    padding: 16px 56px;
+    background: linear-gradient(135deg, var(--nba-blue) 0%, #2a5cbf 100%);
+    border: none; border-radius: 3px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; letter-spacing: 3px;
+    color: white; cursor: pointer;
+    position: relative; overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 24px rgba(29,66,138,0.5);
+  }
+  .btn-primary::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(29,66,138,0.7); }
+  .btn-primary:hover::before { opacity: 1; }
+  .btn-primary:active { transform: translateY(0); }
+
+  /* ===== PLAYER SELECT SCREEN ===== */
+  #screen-select {
+    background: var(--bg-primary);
+    min-height: 100vh;
+  }
+  .select-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .select-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; letter-spacing: 2px;
+    color: var(--text-primary);
+  }
+  .header-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px; letter-spacing: 3px;
+    color: var(--accent-gold); text-transform: uppercase;
+  }
+
+  .select-body {
+    display: flex; flex-direction: row;
+    flex: 1; min-height: 0;
+  }
+  @media (max-width: 900px) {
+    .select-body { flex-direction: column; }
+  }
+
+  .team-panel {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .team-panel:last-child { border-right: none; }
+  .team-panel-header {
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .team-panel-header.team-a { background: linear-gradient(135deg, rgba(29,66,138,0.3), rgba(29,66,138,0.1)); border-bottom: 2px solid var(--team-a); }
+  .team-panel-header.team-b { background: linear-gradient(135deg, rgba(200,16,46,0.3), rgba(200,16,46,0.1)); border-bottom: 2px solid var(--team-b); }
+  .team-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+  }
+  .team-a .team-label { color: #4a90d9; }
+  .team-b .team-label { color: #e55; }
+  .team-panel-header small { color: var(--text-secondary); font-size: 12px; }
+
+  .season-selector-wrap { padding: 10px 16px; }
+  .season-selector {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px; letter-spacing: 1px;
+    border-radius: 3px; cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    transition: border-color 0.2s;
+  }
+  .season-selector:focus { outline: none; border-color: var(--accent-blue); }
+
+  /* All-NBA roster display */
+  .allnba-section { padding: 6px 16px 10px; }
+  .allnba-tier-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 2px;
+    color: var(--accent-gold); margin-bottom: 6px; margin-top: 10px;
+  }
+  .allnba-players-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+  }
+  @media (max-width: 600px) {
+    .allnba-players-grid { grid-template-columns: repeat(5, 1fr); gap: 3px; }
+  }
+  .player-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer; overflow: hidden;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .player-card:hover { border-color: var(--accent-blue); background: var(--bg-hover); transform: translateY(-1px); }
+  .player-card.selected { border-color: var(--accent-gold); background: rgba(245,166,35,0.08); }
+  .player-card.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+  .player-card .img-wrap {
+    width: 100%; aspect-ratio: 1/1;
+    background: linear-gradient(135deg, #1a1a28, #0d0d18);
+    overflow: hidden; display: flex; align-items: flex-end; justify-content: center;
+  }
+  .player-card .img-wrap img {
+    width: 100%; height: 100%; object-fit: cover; object-position: top;
+    transition: transform 0.3s;
+  }
+  .player-card:hover .img-wrap img { transform: scale(1.05); }
+  .player-card .player-info { padding: 4px 5px 5px; }
+  .player-card .player-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 700;
+    line-height: 1.2; color: var(--text-primary);
+  }
+  .player-card .player-pos {
+    font-size: 10px; color: var(--text-secondary);
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .player-card .player-season-tag {
+    position: absolute; top: 3px; right: 3px;
+    background: rgba(0,0,0,0.75);
+    font-size: 9px; color: var(--accent-gold);
+    font-family: 'Barlow Condensed', sans-serif;
+    padding: 1px 4px; border-radius: 2px;
+  }
+  .player-card .selected-badge {
+    position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent-gold); color: #000;
+    font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Lineup slots */
+  .lineup-section { padding: 10px 16px 16px; }
+  .lineup-section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 2px;
+    color: var(--text-secondary); margin-bottom: 8px;
+  }
+  .lineup-slots { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .lineup-slot {
+    flex: 1; min-width: 70px; max-width: 100px;
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 6px 4px; text-align: center;
+    position: relative; cursor: default;
+    transition: border-color 0.2s;
+    min-height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .lineup-slot.filled { border-style: solid; border-color: var(--border); }
+  .lineup-slot.filled:hover { border-color: var(--accent-red); }
+  .lineup-slot .slot-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px; letter-spacing: 1px;
+    color: var(--text-muted); margin-bottom: 3px;
+  }
+  .lineup-slot .slot-img {
+    width: 38px; height: 38px; border-radius: 50%;
+    object-fit: cover; object-position: top;
+    border: 1px solid var(--border);
+    display: block; margin: 0 auto 2px;
+  }
+  .lineup-slot .slot-name {
+    font-size: 9px; font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; color: var(--text-primary);
+    line-height: 1.2; text-align: center;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .lineup-slot .slot-season {
+    font-size: 8px; color: var(--accent-gold);
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .lineup-slot .remove-btn {
+    position: absolute; top: 2px; right: 2px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent-red); color: white;
+    font-size: 9px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .lineup-slot .slot-empty-icon {
+    font-size: 20px; opacity: 0.2; color: var(--text-muted);
+  }
+
+  /* sim start bar */
+  .sim-start-bar {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+    text-align: center;
+    position: sticky; bottom: 0; z-index: 10;
+  }
+  .btn-simulate {
+    padding: 14px 60px;
+    background: linear-gradient(135deg, #c8102e 0%, #a00020 100%);
+    border: none; border-radius: 3px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; letter-spacing: 3px;
+    color: white; cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(200,16,46,0.4);
+    opacity: 0.4; pointer-events: none;
+  }
+  .btn-simulate.ready { opacity: 1; pointer-events: auto; }
+  .btn-simulate.ready:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(200,16,46,0.6); }
+  .sim-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+  /* ===== LINEUP PREVIEW SCREEN ===== */
+  #screen-lineup {
+    background: var(--bg-primary);
+    align-items: stretch;
+  }
+  .lineup-preview-header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px; text-align: center;
+  }
+  .lineup-preview-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px; letter-spacing: 3px;
+  }
+  .lineup-preview-body {
+    flex: 1; display: flex; flex-direction: row;
+    gap: 0; overflow: auto;
+  }
+  @media (max-width: 700px) { .lineup-preview-body { flex-direction: column; } }
+  .lineup-preview-team {
+    flex: 1; padding: 20px;
+    border-right: 1px solid var(--border);
+  }
+  .lineup-preview-team:last-child { border-right: none; }
+  .lp-team-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px; letter-spacing: 2px; margin-bottom: 14px;
+  }
+  .lp-section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; letter-spacing: 3px;
+    color: var(--text-secondary); text-transform: uppercase;
+    margin-bottom: 8px; margin-top: 14px;
+  }
+  .lp-players-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .lp-player-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; text-align: center;
+    width: calc(20% - 8px); min-width: 70px;
+  }
+  .lp-player-card img {
+    width: 52px; height: 52px; border-radius: 50%;
+    object-fit: cover; object-position: top;
+    border: 2px solid var(--border); margin-bottom: 6px;
+  }
+  .lp-player-card .lp-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 700;
+    line-height: 1.2;
+  }
+  .lp-player-card .lp-pos {
+    font-size: 10px; color: var(--text-secondary);
+  }
+  .lp-player-card .lp-season {
+    font-size: 9px; color: var(--accent-gold);
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .lineup-preview-actions {
+    padding: 16px 24px; text-align: center;
+    background: var(--bg-secondary); border-top: 1px solid var(--border);
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  }
+  .btn-back { padding: 12px 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+  .btn-back:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+  .btn-start-game { padding: 14px 50px; background: linear-gradient(135deg, var(--nba-red) 0%, #a00020 100%); border: none; border-radius: 3px; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(200,16,46,0.4); }
+  .btn-start-game:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(200,16,46,0.6); }
+
+  /* ===== GAME SCREEN ===== */
+  #screen-game {
+    background: var(--bg-primary);
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .game-arena {
+    width: 100%; max-width: 760px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .game-header-teams {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 16px;
+  }
+  .game-team-display { text-align: center; }
+  .game-team-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(20px, 4vw, 32px); letter-spacing: 2px;
+  }
+  .game-team-name.a { color: #4a90d9; }
+  .game-team-name.b { color: #e55; }
+  .game-vs {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; color: var(--text-muted); letter-spacing: 3px;
+  }
+  .scoreboard {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .scoreboard-table { width: 100%; border-collapse: collapse; }
+  .scoreboard-table th, .scoreboard-table td {
+    padding: 12px 8px; text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    border-right: 1px solid var(--border);
+  }
+  .scoreboard-table th:last-child, .scoreboard-table td:last-child { border-right: none; }
+  .scoreboard-table thead tr { background: var(--bg-card); }
+  .scoreboard-table thead th {
+    font-size: 12px; letter-spacing: 2px;
+    color: var(--text-secondary); text-transform: uppercase;
+    font-weight: 600;
+  }
+  .scoreboard-table thead th.total-col {
+    background: rgba(245,166,35,0.08); color: var(--accent-gold);
+  }
+  .scoreboard-table tbody tr { border-bottom: 1px solid var(--border); }
+  .scoreboard-table tbody tr:last-child { border-bottom: none; }
+  .scoreboard-table .team-cell {
+    text-align: left; padding-left: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 1px; min-width: 80px;
+  }
+  .scoreboard-table .score-cell {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; color: var(--accent-gold);
+    letter-spacing: 1px;
+  }
+  .scoreboard-table .q-cell {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; color: var(--text-primary);
+    min-width: 50px;
+  }
+  .scoreboard-table .q-cell.active { color: #fff; }
+  .scoreboard-table .q-cell.done { color: var(--text-secondary); }
+  .scoreboard-table .q-cell.pending { color: var(--text-muted); }
+  .game-status-bar {
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px; letter-spacing: 2px;
+    color: var(--accent-gold); text-transform: uppercase;
+    min-height: 24px;
+  }
+  .game-status-bar.blinking { animation: blink 0.8s ease-in-out infinite; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .play-by-play-feed {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    height: 160px; overflow-y: auto;
+    padding: 10px 14px;
+  }
+  .pbp-line {
+    font-size: 12px; color: var(--text-secondary);
+    line-height: 1.8; font-family: 'Barlow', sans-serif;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding: 2px 0;
+  }
+  .pbp-line.score { color: var(--accent-gold); font-weight: 600; }
+  .pbp-line.highlight { color: var(--text-primary); font-weight: 600; }
+  .pbp-line span.team-a-color { color: #4a90d9; }
+  .pbp-line span.team-b-color { color: #e55; }
+  .btn-end-game { display: none; padding: 14px 50px; background: linear-gradient(135deg, var(--nba-blue) 0%, #2a5cbf 100%); border: none; border-radius: 3px; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(29,66,138,0.4); margin: 0 auto; }
+  .btn-end-game:hover { transform: translateY(-2px); }
+
+  /* ===== RESULTS SCREEN ===== */
+  #screen-results {
+    background: var(--bg-primary);
+    align-items: stretch;
+  }
+  .results-header {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+    border-bottom: 1px solid var(--border);
+    padding: 22px 24px; text-align: center;
+  }
+  .winner-announcement {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 6vw, 52px);
+    letter-spacing: 3px;
+  }
+  .winner-announcement.a-win { color: #4a90d9; text-shadow: 0 0 40px rgba(74,144,217,0.4); }
+  .winner-announcement.b-win { color: #e55; text-shadow: 0 0 40px rgba(229,85,85,0.4); }
+  .final-score-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(32px, 7vw, 64px);
+    letter-spacing: 4px; margin-top: 4px;
+  }
+  .boxscore-section { padding: 16px; flex: 1; overflow: auto; }
+  .boxscore-team-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 2px; margin-bottom: 8px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .boxscore-team-title.a { color: #4a90d9; }
+  .boxscore-team-title.b { color: #e55; }
+  .boxscore-wrap { overflow-x: auto; margin-bottom: 20px; }
+  .boxscore-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 720px; }
+  .boxscore-table thead tr { background: var(--bg-secondary); }
+  .boxscore-table thead th {
+    padding: 8px 6px; text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; letter-spacing: 1px;
+    color: var(--text-secondary); text-transform: uppercase;
+    border-right: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .boxscore-table thead th.name-col { text-align: left; padding-left: 12px; }
+  .boxscore-table tbody tr { border-bottom: 1px solid var(--border); }
+  .boxscore-table tbody tr:last-child { background: rgba(255,255,255,0.04); font-weight: 600; }
+  .boxscore-table tbody td {
+    padding: 8px 6px; text-align: center;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    border-right: 1px solid var(--border); white-space: nowrap;
+  }
+  .boxscore-table tbody td.name-col { text-align: left; padding-left: 12px; font-weight: 600; color: var(--text-primary); }
+  .boxscore-table tbody td.pos-col { color: var(--text-secondary); font-size: 11px; }
+  .boxscore-table tbody td.pts-col { color: var(--accent-gold); font-weight: 700; font-size: 14px; }
+  .boxscore-table .total-row td { color: var(--text-secondary); }
+  .results-footer { padding: 16px 24px; text-align: center; background: var(--bg-secondary); border-top: 1px solid var(--border); }
+  .btn-home { padding: 14px 50px; background: linear-gradient(135deg, var(--nba-blue) 0%, #2a5cbf 100%); border: none; border-radius: 3px; font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 20px rgba(29,66,138,0.4); }
+  .btn-home:hover { transform: translateY(-2px); }
+
+  /* Alert toast */
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: #e53e3e; color: white;
+    padding: 12px 24px; border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; letter-spacing: 1px;
+    z-index: 1000; transition: transform 0.3s ease; white-space: nowrap;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .ot-label { color: var(--accent-red) !important; }
+  .crown-icon { font-size: 0.7em; margin-right: 6px; }
+
+  .select-scroll-area { overflow-y: auto; flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN 1: INTRO ===== -->
+<div id="screen-intro" class="screen active">
+  <div class="intro-bg"></div>
+  <div class="players-container">
+    <div class="player-silhouette left-1">
+      <svg viewBox="0 0 160 320" fill="rgba(255,255,255,0.6)" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="80" cy="32" rx="26" ry="28"/>
+        <path d="M30 100 Q80 70 130 100 L145 200 Q80 220 15 200Z"/>
+        <path d="M30 100 L10 180 Q5 200 20 205 L35 160 L50 200 L80 160 L110 200 L125 160 L140 205 Q155 200 150 180 L130 100Z"/>
+        <path d="M50 200 L40 290 Q38 310 55 312 Q68 314 70 295 L80 240 L90 295 Q92 314 105 312 Q122 310 120 290 L110 200Z"/>
+      </svg>
+    </div>
+    <div class="player-silhouette left-2">
+      <svg viewBox="0 0 140 300" fill="rgba(255,255,255,0.6)" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="70" cy="28" rx="22" ry="24"/>
+        <path d="M25 90 Q70 60 115 90 L128 185 Q70 205 12 185Z"/>
+        <path d="M25 90 L5 165 Q0 185 15 190 L30 150 L45 190 L70 150 L95 190 L110 150 L125 190 Q140 185 135 165 L115 90Z"/>
+        <path d="M45 190 L35 275 Q33 294 50 296 Q62 298 64 280 L70 225 L76 280 Q78 298 90 296 Q107 294 105 275 L95 190Z"/>
+      </svg>
+    </div>
+    <div class="player-silhouette right-1">
+      <svg viewBox="0 0 140 300" fill="rgba(255,255,255,0.6)" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="70" cy="28" rx="22" ry="24"/>
+        <path d="M25 90 Q70 60 115 90 L128 185 Q70 205 12 185Z"/>
+        <path d="M25 90 L5 165 Q0 185 15 190 L30 150 L45 190 L70 150 L95 190 L110 150 L125 190 Q140 185 135 165 L115 90Z"/>
+        <path d="M45 190 L35 275 Q33 294 50 296 Q62 298 64 280 L70 225 L76 280 Q78 298 90 296 Q107 294 105 275 L95 190Z"/>
+      </svg>
+    </div>
+    <div class="player-silhouette right-2">
+      <svg viewBox="0 0 160 320" fill="rgba(255,255,255,0.6)" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="80" cy="32" rx="26" ry="28"/>
+        <path d="M30 100 Q80 70 130 100 L145 200 Q80 220 15 200Z"/>
+        <path d="M30 100 L10 180 Q5 200 20 205 L35 160 L50 200 L80 160 L110 200 L125 160 L140 205 Q155 200 150 180 L130 100Z"/>
+        <path d="M50 200 L40 290 Q38 310 55 312 Q68 314 70 295 L80 240 L90 295 Q92 314 105 312 Q122 310 120 290 L110 200Z"/>
+      </svg>
+    </div>
+  </div>
+  <div class="intro-center">
+    <div class="nba-logo-area">
+      <div class="nba-logo-badge"><span>NBA</span></div>
+    </div>
+    <div style="line-height:1;">
+      <div class="game-title-main">FANTASY</div>
+      <div class="game-title-main">SIMULATION</div>
+    </div>
+    <div class="game-subtitle">Build Your Dream Team · Simulate the Game</div>
+    <div class="game-desc">Pick All-NBA legends from any season (2010–2025), build your squad, and let the simulation decide who reigns supreme.</div>
+    <button class="btn-primary" onclick="goToSelect()">▶ TEAM SELECT</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: PLAYER SELECT ===== -->
+<div id="screen-select" class="screen">
+  <div class="select-header">
+    <div>
+      <div class="header-badge">NBA FANTASY SIMULATION</div>
+      <h2>SELECT YOUR ROSTERS</h2>
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); text-align:right;">
+      Pick 5 starters (3 Backcourt + 2 Frontcourt)<br>+ 3 Bench players per team
+    </div>
+  </div>
+  <div class="select-body" style="flex:1; overflow:auto;">
+    <!-- TEAM A -->
+    <div class="team-panel" id="panel-a">
+      <div class="team-panel-header team-a">
+        <div class="team-label">TEAM A</div>
+        <small>Choose a season to pick players</small>
+      </div>
+      <div class="season-selector-wrap">
+        <select class="season-selector" id="season-a" onchange="loadSeason('a')">
+          <option value="">— Select Season —</option>
+        </select>
+      </div>
+      <div class="select-scroll-area" id="scroll-a">
+        <div class="allnba-section" id="allnba-a"></div>
+        <div class="lineup-section">
+          <div class="lineup-section-title">⚡ STARTERS (5)</div>
+          <div class="lineup-slots" id="starters-a"></div>
+          <div class="lineup-section-title" style="margin-top:8px;">🏀 BENCH (3)</div>
+          <div class="lineup-slots" id="bench-a"></div>
+        </div>
+      </div>
+    </div>
+    <!-- TEAM B -->
+    <div class="team-panel" id="panel-b">
+      <div class="team-panel-header team-b">
+        <div class="team-label">TEAM B</div>
+        <small>Choose a season to pick players</small>
+      </div>
+      <div class="season-selector-wrap">
+        <select class="season-selector" id="season-b" onchange="loadSeason('b')">
+          <option value="">— Select Season —</option>
+        </select>
+      </div>
+      <div class="select-scroll-area" id="scroll-b">
+        <div class="allnba-section" id="allnba-b"></div>
+        <div class="lineup-section">
+          <div class="lineup-section-title">⚡ STARTERS (5)</div>
+          <div class="lineup-slots" id="starters-b"></div>
+          <div class="lineup-section-title" style="margin-top:8px;">🏀 BENCH (3)</div>
+          <div class="lineup-slots" id="bench-b"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sim-start-bar">
+    <button class="btn-simulate" id="btn-go-lineup" onclick="goToLineupPreview()">NEXT: VIEW LINEUPS →</button>
+    <div class="sim-hint" id="sim-hint">Select 8 players for each team to continue</div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: LINEUP PREVIEW ===== -->
+<div id="screen-lineup" class="screen">
+  <div class="lineup-preview-header">
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:3px; color:var(--accent-gold); margin-bottom:4px;">MATCHUP</div>
+    <h2 style="font-family:'Bebas Neue',sans-serif; font-size:clamp(24px,5vw,40px); letter-spacing:3px;">TEAM A vs TEAM B</h2>
+  </div>
+  <div class="lineup-preview-body" id="lineup-preview-body"></div>
+  <div class="lineup-preview-actions">
+    <button class="btn-back" onclick="goToSelect()">← BACK</button>
+    <button class="btn-start-game" onclick="startGame()">🏀 SIMULATION START</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 4: GAME SCREEN ===== -->
+<div id="screen-game" class="screen">
+  <div class="game-arena">
+    <div class="game-header-teams">
+      <div class="game-team-display">
+        <div class="game-team-name a">TEAM A</div>
+        <div id="g-team-a-players" style="font-size:11px; color:var(--text-secondary); line-height:1.8;"></div>
+      </div>
+      <div class="game-vs">VS</div>
+      <div class="game-team-display">
+        <div class="game-team-name b">TEAM B</div>
+        <div id="g-team-b-players" style="font-size:11px; color:var(--text-secondary); line-height:1.8;"></div>
+      </div>
+    </div>
+    <div class="scoreboard">
+      <table class="scoreboard-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding-left:16px;">TEAM</th>
+            <th>1Q</th><th>2Q</th><th>3Q</th><th>4Q</th>
+            <th id="ot-header" style="display:none;" class="ot-label">OT</th>
+            <th class="total-col">TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="team-cell" style="color:#4a90d9;">A</td>
+            <td class="q-cell pending" id="sc-a-1">-</td>
+            <td class="q-cell pending" id="sc-a-2">-</td>
+            <td class="q-cell pending" id="sc-a-3">-</td>
+            <td class="q-cell pending" id="sc-a-4">-</td>
+            <td class="q-cell pending ot-cell" id="sc-a-ot" style="display:none;">-</td>
+            <td class="score-cell" id="sc-a-total">0</td>
+          </tr>
+          <tr>
+            <td class="team-cell" style="color:#e55;">B</td>
+            <td class="q-cell pending" id="sc-b-1">-</td>
+            <td class="q-cell pending" id="sc-b-2">-</td>
+            <td class="q-cell pending" id="sc-b-3">-</td>
+            <td class="q-cell pending" id="sc-b-4">-</td>
+            <td class="q-cell pending ot-cell" id="sc-b-ot" style="display:none;">-</td>
+            <td class="score-cell" id="sc-b-total">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="game-status-bar blinking" id="game-status">LOADING SIMULATION...</div>
+    <div class="play-by-play-feed" id="pbp-feed"></div>
+    <button class="btn-end-game" id="btn-end-game" onclick="goToResults()">VIEW RESULTS →</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 5: RESULTS ===== -->
+<div id="screen-results" class="screen">
+  <div class="results-header">
+    <div class="winner-announcement" id="winner-text"></div>
+    <div class="final-score-display" id="final-score"></div>
+  </div>
+  <div class="boxscore-section" id="boxscore-section"></div>
+  <div class="results-footer">
+    <button class="btn-home" onclick="goHome()">🏠 BACK TO MAIN</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  DATA LAYER - All-NBA Teams (2010-11 through 2024-25)
+//  Stats: season averages per game from Basketball Reference
+// ============================================================
+
+const ALL_NBA_DATA = {
+  "2010-11": {
+    first: [
+      { id:"lebron_1011", name:"LeBron James",  pos:"SF", team:"MIA", stats:{pts:26.7,reb:7.5,ast:7.0,fg_pct:0.510,three_pct:0.330,blk:0.6,stl:1.6,to:3.4,min:37.9,orb:1.3,drb:6.2,mp_rating:94} },
+      { id:"kobe_1011",   name:"Kobe Bryant",   pos:"SG", team:"LAL", stats:{pts:25.3,reb:5.1,ast:4.7,fg_pct:0.451,three_pct:0.323,blk:0.3,stl:1.2,to:2.9,min:33.9,orb:0.9,drb:4.2,mp_rating:90} },
+      { id:"dwade_1011",  name:"Dwyane Wade",   pos:"SG", team:"MIA", stats:{pts:25.5,reb:6.4,ast:4.6,fg_pct:0.492,three_pct:0.263,blk:1.0,stl:1.7,to:3.1,min:37.1,orb:1.2,drb:5.2,mp_rating:91} },
+      { id:"dirk_1011",   name:"Dirk Nowitzki", pos:"PF", team:"DAL", stats:{pts:23.0,reb:7.0,ast:2.6,fg_pct:0.510,three_pct:0.394,blk:0.6,stl:0.6,to:1.9,min:33.4,orb:1.3,drb:5.7,mp_rating:89} },
+      { id:"dwight_1011", name:"Dwight Howard",  pos:"C",  team:"ORL", stats:{pts:22.9,reb:14.1,ast:1.4,fg_pct:0.593,three_pct:0.0,blk:2.4,stl:1.4,to:3.5,min:36.0,orb:4.6,drb:9.5,mp_rating:92} },
+    ],
+    second: [
+      { id:"cp3_1011",    name:"Chris Paul",    pos:"PG", team:"NOH", stats:{pts:15.9,reb:4.1,ast:9.8,fg_pct:0.463,three_pct:0.381,blk:0.2,stl:2.4,to:2.6,min:35.9,orb:0.6,drb:3.5,mp_rating:88} },
+      { id:"rose_1011",   name:"Derrick Rose",  pos:"PG", team:"CHI", stats:{pts:25.0,reb:4.1,ast:7.7,fg_pct:0.449,three_pct:0.330,blk:0.6,stl:1.0,to:3.4,min:37.4,orb:0.9,drb:3.2,mp_rating:89} },
+      { id:"melo_1011",   name:"Carmelo Anthony",pos:"SF",team:"DEN", stats:{pts:25.6,reb:8.0,ast:2.9,fg_pct:0.444,three_pct:0.357,blk:0.5,stl:1.1,to:2.8,min:35.8,orb:2.5,drb:5.5,mp_rating:86} },
+      { id:"kdurant_1011",name:"Kevin Durant",   pos:"SF", team:"OKC", stats:{pts:27.7,reb:6.8,ast:2.7,fg_pct:0.462,three_pct:0.350,blk:1.0,stl:1.1,to:2.8,min:38.9,orb:1.2,drb:5.6,mp_rating:91} },
+      { id:"gasol_1011",  name:"Pau Gasol",      pos:"PF", team:"LAL", stats:{pts:18.8,reb:10.2,ast:3.3,fg_pct:0.501,three_pct:0.0,blk:1.5,stl:0.6,to:2.5,min:34.8,orb:3.1,drb:7.1,mp_rating:84} },
+    ],
+    third: [
+      { id:"westbrook_1011",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:21.9,reb:4.6,ast:8.2,fg_pct:0.445,three_pct:0.329,blk:0.3,stl:1.9,to:3.6,min:34.8,orb:0.9,drb:3.7,mp_rating:86} },
+      { id:"rondo_1011",  name:"Rajon Rondo",   pos:"PG", team:"BOS", stats:{pts:10.6,reb:4.5,ast:11.7,fg_pct:0.477,three_pct:0.0,blk:0.2,stl:2.1,to:2.5,min:37.9,orb:1.2,drb:3.3,mp_rating:80} },
+      { id:"gay_1011",    name:"Rudy Gay",       pos:"SF", team:"MEM", stats:{pts:19.7,reb:6.3,ast:2.2,fg_pct:0.444,three_pct:0.313,blk:0.9,stl:1.5,to:2.2,min:35.5,orb:1.8,drb:4.5,mp_rating:78} },
+      { id:"aldridge_1011",name:"LaMarcus Aldridge",pos:"PF",team:"POR",stats:{pts:21.8,reb:8.8,ast:1.7,fg_pct:0.482,three_pct:0.0,blk:1.1,stl:0.5,to:2.1,min:36.2,orb:2.3,drb:6.5,mp_rating:82} },
+      { id:"noah_1011",   name:"Joakim Noah",   pos:"C",  team:"CHI", stats:{pts:11.8,reb:11.0,ast:1.8,fg_pct:0.511,three_pct:0.0,blk:1.4,stl:0.8,to:2.2,min:34.4,orb:4.1,drb:6.9,mp_rating:79} },
+    ]
+  },
+  "2011-12": {
+    first: [
+      { id:"lebron_1112", name:"LeBron James",  pos:"SF", team:"MIA", stats:{pts:27.1,reb:7.9,ast:6.2,fg_pct:0.531,three_pct:0.362,blk:0.8,stl:1.9,to:3.4,min:37.5,orb:1.5,drb:6.4,mp_rating:96} },
+      { id:"kobe_1112",   name:"Kobe Bryant",   pos:"SG", team:"LAL", stats:{pts:27.9,reb:5.4,ast:4.6,fg_pct:0.430,three_pct:0.303,blk:0.3,stl:1.2,to:3.2,min:38.5,orb:0.8,drb:4.6,mp_rating:90} },
+      { id:"durant_1112", name:"Kevin Durant",   pos:"SF", team:"OKC", stats:{pts:28.0,reb:8.0,ast:3.5,fg_pct:0.496,three_pct:0.387,blk:1.2,stl:1.3,to:3.7,min:38.6,orb:1.5,drb:6.5,mp_rating:93} },
+      { id:"dwight_1112", name:"Dwight Howard",  pos:"C",  team:"ORL", stats:{pts:20.6,reb:14.5,ast:1.9,fg_pct:0.573,three_pct:0.0,blk:2.1,stl:1.5,to:2.9,min:35.0,orb:5.0,drb:9.5,mp_rating:92} },
+      { id:"cp3_1112",    name:"Chris Paul",    pos:"PG", team:"LAC", stats:{pts:19.8,reb:3.6,ast:9.1,fg_pct:0.488,three_pct:0.374,blk:0.1,stl:2.5,to:2.5,min:33.2,orb:0.5,drb:3.1,mp_rating:90} },
+    ],
+    second: [
+      { id:"westbrook_1112",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:23.6,reb:5.5,ast:8.2,fg_pct:0.459,three_pct:0.324,blk:0.3,stl:1.7,to:3.6,min:36.8,orb:1.2,drb:4.3,mp_rating:89} },
+      { id:"rose_1112",   name:"Derrick Rose",  pos:"PG", team:"CHI", stats:{pts:21.8,reb:3.4,ast:7.9,fg_pct:0.435,three_pct:0.315,blk:0.5,stl:0.9,to:3.7,min:32.7,orb:0.5,drb:2.9,mp_rating:85} },
+      { id:"melo_1112",   name:"Carmelo Anthony",pos:"SF",team:"NYK",stats:{pts:22.6,reb:6.3,ast:3.6,fg_pct:0.435,three_pct:0.326,blk:0.5,stl:1.0,to:2.6,min:35.6,orb:1.7,drb:4.6,mp_rating:85} },
+      { id:"dirk_1112",   name:"Dirk Nowitzki", pos:"PF", team:"DAL", stats:{pts:21.6,reb:6.0,ast:2.6,fg_pct:0.457,three_pct:0.404,blk:0.8,stl:0.6,to:2.0,min:31.7,orb:0.9,drb:5.1,mp_rating:85} },
+      { id:"timD_1112",   name:"Tim Duncan",    pos:"C",  team:"SAS", stats:{pts:15.2,reb:9.9,ast:2.0,fg_pct:0.496,three_pct:0.0,blk:2.1,stl:0.7,to:1.9,min:29.9,orb:3.7,drb:6.2,mp_rating:83} },
+    ],
+    third: [
+      { id:"deron_1112",  name:"Deron Williams",pos:"PG", team:"NJN", stats:{pts:21.0,reb:3.5,ast:8.7,fg_pct:0.452,three_pct:0.337,blk:0.2,stl:0.8,to:3.1,min:36.6,orb:0.3,drb:3.2,mp_rating:81} },
+      { id:"harden_1112", name:"James Harden",  pos:"SG", team:"OKC", stats:{pts:16.8,reb:4.1,ast:3.7,fg_pct:0.495,three_pct:0.390,blk:0.5,stl:1.1,to:2.7,min:30.9,orb:0.9,drb:3.2,mp_rating:80} },
+      { id:"ibaka_1112",  name:"Serge Ibaka",   pos:"PF", team:"OKC", stats:{pts:12.6,reb:8.8,ast:0.7,fg_pct:0.519,three_pct:0.0,blk:3.7,stl:0.6,to:1.3,min:27.5,orb:3.4,drb:5.4,mp_rating:79} },
+      { id:"aldridge_1112",name:"LaMarcus Aldridge",pos:"PF",team:"POR",stats:{pts:21.7,reb:8.0,ast:2.0,fg_pct:0.484,three_pct:0.0,blk:0.9,stl:0.6,to:2.0,min:35.6,orb:2.0,drb:6.0,mp_rating:82} },
+      { id:"lopez_1112",  name:"Brook Lopez",   pos:"C",  team:"NJN", stats:{pts:19.5,reb:7.1,ast:1.9,fg_pct:0.504,three_pct:0.0,blk:1.8,stl:0.5,to:2.3,min:31.4,orb:2.2,drb:4.9,mp_rating:80} },
+    ]
+  },
+  "2012-13": {
+    first: [
+      { id:"lebron_1213", name:"LeBron James",  pos:"SF", team:"MIA", stats:{pts:26.8,reb:8.0,ast:7.3,fg_pct:0.565,three_pct:0.406,blk:0.9,stl:1.7,to:3.0,min:37.9,orb:1.3,drb:6.7,mp_rating:97} },
+      { id:"durant_1213", name:"Kevin Durant",   pos:"SF", team:"OKC", stats:{pts:28.1,reb:7.9,ast:4.6,fg_pct:0.510,three_pct:0.416,blk:1.3,stl:1.4,to:3.5,min:38.5,orb:1.3,drb:6.6,mp_rating:94} },
+      { id:"kobe_1213",   name:"Kobe Bryant",   pos:"SG", team:"LAL", stats:{pts:27.3,reb:5.6,ast:6.0,fg_pct:0.463,three_pct:0.324,blk:0.3,stl:1.4,to:3.7,min:38.6,orb:1.0,drb:4.6,mp_rating:89} },
+      { id:"timD_1213",   name:"Tim Duncan",    pos:"C",  team:"SAS", stats:{pts:17.8,reb:9.9,ast:3.0,fg_pct:0.498,three_pct:0.0,blk:2.7,stl:0.7,to:2.1,min:30.4,orb:3.1,drb:6.8,mp_rating:85} },
+      { id:"cp3_1213",    name:"Chris Paul",    pos:"PG", team:"LAC", stats:{pts:16.9,reb:3.7,ast:9.7,fg_pct:0.479,three_pct:0.373,blk:0.1,stl:2.4,to:2.1,min:33.0,orb:0.4,drb:3.3,mp_rating:90} },
+    ],
+    second: [
+      { id:"westbrook_1213",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:23.2,reb:5.2,ast:7.4,fg_pct:0.433,three_pct:0.321,blk:0.3,stl:1.8,to:4.1,min:35.5,orb:1.1,drb:4.1,mp_rating:87} },
+      { id:"harden_1213", name:"James Harden",  pos:"SG", team:"HOU", stats:{pts:25.9,reb:4.9,ast:5.8,fg_pct:0.437,three_pct:0.368,blk:0.6,stl:1.8,to:4.1,min:38.2,orb:1.1,drb:3.8,mp_rating:89} },
+      { id:"melo_1213",   name:"Carmelo Anthony",pos:"SF",team:"NYK",stats:{pts:28.7,reb:6.9,ast:2.6,fg_pct:0.449,three_pct:0.379,blk:0.5,stl:0.8,to:2.6,min:37.0,orb:2.1,drb:4.8,mp_rating:88} },
+      { id:"zbo_1213",    name:"Zach Randolph",  pos:"PF", team:"MEM", stats:{pts:15.1,reb:11.2,ast:2.1,fg_pct:0.472,three_pct:0.0,blk:0.4,stl:0.9,to:2.0,min:32.0,orb:4.0,drb:7.2,mp_rating:81} },
+      { id:"marc_1213",   name:"Marc Gasol",     pos:"C",  team:"MEM", stats:{pts:14.9,reb:7.8,ast:3.8,fg_pct:0.459,three_pct:0.0,blk:1.8,stl:1.7,to:2.4,min:31.8,orb:1.8,drb:6.0,mp_rating:83} },
+    ],
+    third: [
+      { id:"tony_1213",   name:"Tony Parker",   pos:"PG", team:"SAS", stats:{pts:20.3,reb:3.0,ast:7.6,fg_pct:0.497,three_pct:0.310,blk:0.1,stl:1.0,to:2.4,min:32.9,orb:0.4,drb:2.6,mp_rating:82} },
+      { id:"kyrie_1213",  name:"Kyrie Irving",  pos:"PG", team:"CLE", stats:{pts:22.5,reb:3.7,ast:5.9,fg_pct:0.469,three_pct:0.399,blk:0.3,stl:1.5,to:3.0,min:34.5,orb:0.6,drb:3.1,mp_rating:84} },
+      { id:"lgw_1213",    name:"LaMarcus Aldridge",pos:"PF",team:"POR",stats:{pts:21.1,reb:8.8,ast:2.6,fg_pct:0.466,three_pct:0.234,blk:1.0,stl:0.8,to:2.1,min:36.8,orb:2.4,drb:6.4,mp_rating:83} },
+      { id:"iguodala_1213",name:"Andre Iguodala",pos:"SF",team:"DEN",stats:{pts:13.0,reb:5.3,ast:5.4,fg_pct:0.458,three_pct:0.360,blk:0.8,stl:1.8,to:2.1,min:33.2,orb:1.0,drb:4.3,mp_rating:80} },
+      { id:"pau_1213",    name:"Pau Gasol",      pos:"C",  team:"LAL", stats:{pts:17.4,reb:9.7,ast:3.3,fg_pct:0.490,three_pct:0.0,blk:1.4,stl:0.5,to:2.3,min:33.8,orb:2.8,drb:6.9,mp_rating:82} },
+    ]
+  },
+  "2013-14": {
+    first: [
+      { id:"kevin_1314",  name:"Kevin Durant",   pos:"SF", team:"OKC", stats:{pts:32.0,reb:7.4,ast:5.5,fg_pct:0.503,three_pct:0.391,blk:0.7,stl:1.3,to:3.8,min:38.5,orb:1.1,drb:6.3,mp_rating:97} },
+      { id:"lebron_1314", name:"LeBron James",   pos:"SF", team:"MIA", stats:{pts:27.1,reb:6.9,ast:6.3,fg_pct:0.567,three_pct:0.379,blk:0.3,stl:1.6,to:3.5,min:37.7,orb:1.1,drb:5.8,mp_rating:95} },
+      { id:"cp3_1314",    name:"Chris Paul",     pos:"PG", team:"LAC", stats:{pts:19.1,reb:4.3,ast:10.7,fg_pct:0.468,three_pct:0.375,blk:0.1,stl:2.5,to:2.5,min:35.3,orb:0.5,drb:3.8,mp_rating:91} },
+      { id:"blake_1314",  name:"Blake Griffin",  pos:"PF", team:"LAC", stats:{pts:24.1,reb:9.9,ast:3.9,fg_pct:0.527,three_pct:0.213,blk:0.4,stl:0.7,to:2.8,min:35.5,orb:3.3,drb:6.6,mp_rating:87} },
+      { id:"joakim_1314", name:"Joakim Noah",    pos:"C",  team:"CHI", stats:{pts:12.6,reb:11.3,ast:5.4,fg_pct:0.519,three_pct:0.0,blk:1.6,stl:0.8,to:2.1,min:35.7,orb:4.2,drb:7.1,mp_rating:85} },
+    ],
+    second: [
+      { id:"westbrook_1314",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:21.8,reb:5.7,ast:6.9,fg_pct:0.434,three_pct:0.318,blk:0.3,stl:1.9,to:4.1,min:34.2,orb:1.3,drb:4.4,mp_rating:86} },
+      { id:"harden_1314", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:25.4,reb:4.7,ast:6.1,fg_pct:0.445,three_pct:0.368,blk:0.5,stl:1.6,to:4.1,min:36.9,orb:1.0,drb:3.7,mp_rating:90} },
+      { id:"aldridge_1314",name:"LaMarcus Aldridge",pos:"PF",team:"POR",stats:{pts:23.2,reb:11.1,ast:2.1,fg_pct:0.472,three_pct:0.0,blk:1.4,stl:0.6,to:2.2,min:36.7,orb:3.2,drb:7.9,mp_rating:86} },
+      { id:"timD_1314",   name:"Tim Duncan",     pos:"C",  team:"SAS", stats:{pts:15.1,reb:9.7,ast:2.5,fg_pct:0.498,three_pct:0.0,blk:2.6,stl:0.7,to:1.8,min:30.2,orb:3.5,drb:6.2,mp_rating:83} },
+      { id:"kyrie_1314",  name:"Kyrie Irving",   pos:"PG", team:"CLE", stats:{pts:20.8,reb:3.6,ast:6.1,fg_pct:0.469,three_pct:0.391,blk:0.2,stl:1.4,to:3.0,min:35.1,orb:0.4,drb:3.2,mp_rating:85} },
+    ],
+    third: [
+      { id:"curry_1314",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:23.8,reb:4.3,ast:8.5,fg_pct:0.452,three_pct:0.423,blk:0.2,stl:1.6,to:3.8,min:36.5,orb:0.7,drb:3.6,mp_rating:86} },
+      { id:"melo_1314",   name:"Carmelo Anthony", pos:"SF", team:"NYK", stats:{pts:27.4,reb:8.1,ast:3.1,fg_pct:0.449,three_pct:0.381,blk:0.5,stl:0.7,to:2.8,min:37.0,orb:2.1,drb:6.0,mp_rating:86} },
+      { id:"dwight_1314", name:"Dwight Howard",  pos:"C",  team:"HOU", stats:{pts:18.3,reb:12.2,ast:1.5,fg_pct:0.572,three_pct:0.0,blk:1.8,stl:1.4,to:3.0,min:35.0,orb:5.0,drb:7.2,mp_rating:86} },
+      { id:"leonard_1314",name:"Kawhi Leonard",  pos:"SF", team:"SAS", stats:{pts:12.8,reb:6.2,ast:2.0,fg_pct:0.523,three_pct:0.379,blk:0.9,stl:1.7,to:1.5,min:29.0,orb:1.6,drb:4.6,mp_rating:80} },
+      { id:"paul_george_1314",name:"Paul George",pos:"SF",team:"IND",stats:{pts:21.7,reb:7.6,ast:3.5,fg_pct:0.418,three_pct:0.364,blk:0.5,stl:1.8,to:2.4,min:35.3,orb:1.5,drb:6.1,mp_rating:84} },
+    ]
+  },
+  "2014-15": {
+    first: [
+      { id:"curry_1415",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:23.8,reb:4.3,ast:7.7,fg_pct:0.487,three_pct:0.443,blk:0.2,stl:2.0,to:3.1,min:32.7,orb:0.7,drb:3.6,mp_rating:93} },
+      { id:"james_1415",  name:"LeBron James",   pos:"SF", team:"CLE", stats:{pts:25.3,reb:6.0,ast:7.4,fg_pct:0.488,three_pct:0.354,blk:0.7,stl:1.6,to:3.9,min:36.1,orb:1.1,drb:4.9,mp_rating:94} },
+      { id:"harden_1415", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:27.4,reb:5.7,ast:7.0,fg_pct:0.440,three_pct:0.373,blk:0.6,stl:1.7,to:4.6,min:35.7,orb:1.0,drb:4.7,mp_rating:92} },
+      { id:"davis_1415",  name:"Anthony Davis",  pos:"C",  team:"NOP", stats:{pts:24.4,reb:10.2,ast:2.2,fg_pct:0.535,three_pct:0.0,blk:2.9,stl:1.5,to:2.1,min:36.4,orb:3.0,drb:7.2,mp_rating:92} },
+      { id:"aldridge_1415",name:"LaMarcus Aldridge",pos:"PF",team:"POR",stats:{pts:23.4,reb:10.2,ast:2.7,fg_pct:0.477,three_pct:0.0,blk:1.1,stl:0.5,to:2.1,min:35.2,orb:2.5,drb:7.7,mp_rating:86} },
+    ],
+    second: [
+      { id:"westbrook_1415",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:28.1,reb:7.3,ast:8.6,fg_pct:0.428,three_pct:0.307,blk:0.3,stl:2.1,to:4.3,min:34.4,orb:2.0,drb:5.3,mp_rating:91} },
+      { id:"paul_george_1415",name:"Paul George",pos:"SF",team:"IND",stats:{pts:21.7,reb:7.6,ast:3.5,fg_pct:0.418,three_pct:0.364,blk:0.5,stl:1.8,to:2.4,min:35.3,orb:1.5,drb:6.1,mp_rating:84} },
+      { id:"marc_1415",   name:"Marc Gasol",      pos:"C", team:"MEM", stats:{pts:17.4,reb:7.8,ast:3.8,fg_pct:0.466,three_pct:0.0,blk:1.7,stl:1.5,to:2.2,min:32.0,orb:1.8,drb:6.0,mp_rating:84} },
+      { id:"cp3_1415",    name:"Chris Paul",      pos:"PG",team:"LAC", stats:{pts:19.1,reb:4.6,ast:10.2,fg_pct:0.465,three_pct:0.355,blk:0.1,stl:2.5,to:2.4,min:34.2,orb:0.6,drb:4.0,mp_rating:89} },
+      { id:"timD_1415",   name:"Tim Duncan",      pos:"C", team:"SAS", stats:{pts:13.9,reb:9.1,ast:2.8,fg_pct:0.501,three_pct:0.0,blk:2.1,stl:0.6,to:1.9,min:28.4,orb:3.3,drb:5.8,mp_rating:81} },
+    ],
+    third: [
+      { id:"kyrie_1415",  name:"Kyrie Irving",   pos:"PG", team:"CLE", stats:{pts:21.7,reb:3.2,ast:5.2,fg_pct:0.469,three_pct:0.410,blk:0.2,stl:1.5,to:2.5,min:31.8,orb:0.4,drb:2.8,mp_rating:84} },
+      { id:"draymond_1415",name:"Draymond Green",pos:"PF",team:"GSW",stats:{pts:11.7,reb:8.2,ast:3.7,fg_pct:0.462,three_pct:0.327,blk:1.3,stl:1.7,to:2.2,min:27.0,orb:2.5,drb:5.7,mp_rating:82} },
+      { id:"paul_g2_1415",name:"Goran Dragic",   pos:"PG", team:"MIA", stats:{pts:19.7,reb:3.5,ast:6.0,fg_pct:0.482,three_pct:0.380,blk:0.2,stl:1.4,to:2.5,min:32.8,orb:0.6,drb:2.9,mp_rating:79} },
+      { id:"klay_1415",   name:"Klay Thompson",  pos:"SG", team:"GSW", stats:{pts:21.7,reb:3.7,ast:2.9,fg_pct:0.464,three_pct:0.439,blk:0.7,stl:0.9,to:1.9,min:32.8,orb:0.6,drb:3.1,mp_rating:83} },
+      { id:"leonard_1415",name:"Kawhi Leonard",  pos:"SF", team:"SAS", stats:{pts:16.5,reb:7.2,ast:2.5,fg_pct:0.472,three_pct:0.356,blk:0.7,stl:2.3,to:1.7,min:31.8,orb:1.9,drb:5.3,mp_rating:85} },
+    ]
+  },
+  "2015-16": {
+    first: [
+      { id:"curry_1516",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:30.1,reb:5.4,ast:6.7,fg_pct:0.504,three_pct:0.454,blk:0.2,stl:2.1,to:3.3,min:34.2,orb:0.8,drb:4.6,mp_rating:99} },
+      { id:"james_1516",  name:"LeBron James",   pos:"SF", team:"CLE", stats:{pts:25.3,reb:7.4,ast:6.8,fg_pct:0.520,three_pct:0.309,blk:0.6,stl:1.4,to:3.3,min:35.6,orb:1.5,drb:5.9,mp_rating:95} },
+      { id:"westbrook_1516",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:23.5,reb:7.8,ast:10.4,fg_pct:0.454,three_pct:0.294,blk:0.3,stl:2.0,to:4.9,min:34.4,orb:2.3,drb:5.5,mp_rating:92} },
+      { id:"durant_1516", name:"Kevin Durant",   pos:"SF", team:"OKC", stats:{pts:28.2,reb:8.2,ast:5.0,fg_pct:0.505,three_pct:0.387,blk:1.2,stl:1.0,to:3.3,min:35.8,orb:1.5,drb:6.7,mp_rating:95} },
+      { id:"kawhi_1516",  name:"Kawhi Leonard",  pos:"SF", team:"SAS", stats:{pts:21.2,reb:6.7,ast:2.6,fg_pct:0.497,three_pct:0.444,blk:0.8,stl:1.8,to:1.8,min:33.0,orb:1.8,drb:4.9,mp_rating:90} },
+    ],
+    second: [
+      { id:"harden_1516", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:29.0,reb:6.1,ast:7.5,fg_pct:0.440,three_pct:0.358,blk:0.5,stl:1.7,to:4.3,min:38.1,orb:0.8,drb:5.3,mp_rating:92} },
+      { id:"cp3_1516",    name:"Chris Paul",     pos:"PG", team:"LAC", stats:{pts:19.5,reb:4.5,ast:10.0,fg_pct:0.471,three_pct:0.356,blk:0.1,stl:2.1,to:2.6,min:32.5,orb:0.5,drb:4.0,mp_rating:88} },
+      { id:"damian_1516", name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:25.1,reb:4.0,ast:6.8,fg_pct:0.440,three_pct:0.374,blk:0.3,stl:0.9,to:2.9,min:35.5,orb:0.7,drb:3.3,mp_rating:87} },
+      { id:"draymond_1516",name:"Draymond Green",pos:"PF",team:"GSW",stats:{pts:14.0,reb:9.5,ast:7.4,fg_pct:0.490,three_pct:0.388,blk:1.4,stl:1.5,to:3.2,min:35.2,orb:3.2,drb:6.3,mp_rating:87} },
+      { id:"kp_1516",     name:"Kristaps Porzingis",pos:"PF",team:"NYK",stats:{pts:14.3,reb:7.3,ast:1.6,fg_pct:0.440,three_pct:0.333,blk:1.9,stl:0.5,to:1.5,min:29.7,orb:2.2,drb:5.1,mp_rating:78} },
+    ],
+    third: [
+      { id:"klay_1516",   name:"Klay Thompson",  pos:"SG", team:"GSW", stats:{pts:22.1,reb:3.8,ast:2.1,fg_pct:0.470,three_pct:0.425,blk:0.7,stl:0.8,to:2.0,min:33.0,orb:0.5,drb:3.3,mp_rating:84} },
+      { id:"aldridge_1516",name:"LaMarcus Aldridge",pos:"PF",team:"SAS",stats:{pts:18.0,reb:8.5,ast:2.3,fg_pct:0.496,three_pct:0.0,blk:1.2,stl:0.5,to:1.8,min:31.4,orb:2.1,drb:6.4,mp_rating:83} },
+      { id:"paul_g_1516", name:"Paul George",    pos:"SF", team:"IND", stats:{pts:23.1,reb:7.0,ast:4.1,fg_pct:0.414,three_pct:0.369,blk:0.5,stl:1.9,to:2.9,min:36.6,orb:1.2,drb:5.8,mp_rating:85} },
+      { id:"kyrie_1516",  name:"Kyrie Irving",   pos:"PG", team:"CLE", stats:{pts:19.6,reb:3.0,ast:4.7,fg_pct:0.462,three_pct:0.400,blk:0.3,stl:1.1,to:2.2,min:30.4,orb:0.3,drb:2.7,mp_rating:83} },
+      { id:"demar_1516",  name:"DeMar DeRozan",  pos:"SG", team:"TOR", stats:{pts:23.5,reb:4.0,ast:4.0,fg_pct:0.460,three_pct:0.225,blk:0.3,stl:1.3,to:2.4,min:35.5,orb:0.8,drb:3.2,mp_rating:83} },
+    ]
+  },
+  "2016-17": {
+    first: [
+      { id:"westbrook_1617",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:31.6,reb:10.7,ast:10.4,fg_pct:0.425,three_pct:0.343,blk:0.4,stl:1.6,to:5.4,min:34.6,orb:3.5,drb:7.2,mp_rating:95} },
+      { id:"james_1617",  name:"LeBron James",   pos:"SF", team:"CLE", stats:{pts:26.4,reb:8.6,ast:8.7,fg_pct:0.548,three_pct:0.363,blk:0.6,stl:1.2,to:4.1,min:37.8,orb:1.3,drb:7.3,mp_rating:96} },
+      { id:"harden_1617", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:29.1,reb:8.1,ast:11.2,fg_pct:0.440,three_pct:0.347,blk:0.5,stl:1.5,to:5.7,min:36.4,orb:1.3,drb:6.8,mp_rating:93} },
+      { id:"kawhi_1617",  name:"Kawhi Leonard",  pos:"SF", team:"SAS", stats:{pts:25.5,reb:5.8,ast:3.5,fg_pct:0.483,three_pct:0.380,blk:0.7,stl:1.8,to:2.3,min:33.4,orb:1.4,drb:4.4,mp_rating:93} },
+      { id:"durant_1617", name:"Kevin Durant",   pos:"SF", team:"GSW", stats:{pts:25.1,reb:8.3,ast:4.8,fg_pct:0.537,three_pct:0.375,blk:1.6,stl:1.1,to:3.0,min:33.4,orb:1.3,drb:7.0,mp_rating:94} },
+    ],
+    second: [
+      { id:"curry_1617",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:25.3,reb:4.5,ast:6.6,fg_pct:0.468,three_pct:0.411,blk:0.2,stl:1.8,to:3.0,min:33.4,orb:0.7,drb:3.8,mp_rating:92} },
+      { id:"klay_1617",   name:"Klay Thompson",  pos:"SG", team:"GSW", stats:{pts:22.3,reb:3.7,ast:2.1,fg_pct:0.468,three_pct:0.414,blk:0.5,stl:1.0,to:1.7,min:34.0,orb:0.5,drb:3.2,mp_rating:85} },
+      { id:"giannis_1617",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:22.9,reb:8.8,ast:5.4,fg_pct:0.521,three_pct:0.272,blk:1.9,stl:1.6,to:4.1,min:35.6,orb:2.5,drb:6.3,mp_rating:87} },
+      { id:"isaiah_1617", name:"Isaiah Thomas",  pos:"PG", team:"BOS", stats:{pts:28.9,reb:2.7,ast:5.9,fg_pct:0.463,three_pct:0.379,blk:0.2,stl:0.9,to:3.2,min:33.8,orb:0.3,drb:2.4,mp_rating:86} },
+      { id:"davis_1617",  name:"Anthony Davis",  pos:"C",  team:"NOP", stats:{pts:28.0,reb:11.8,ast:2.1,fg_pct:0.505,three_pct:0.283,blk:2.2,stl:1.3,to:2.5,min:36.1,orb:3.8,drb:8.0,mp_rating:93} },
+    ],
+    third: [
+      { id:"hayward_1617",name:"Gordon Hayward", pos:"SF", team:"UTA", stats:{pts:21.9,reb:5.4,ast:3.5,fg_pct:0.472,three_pct:0.399,blk:0.4,stl:1.3,to:2.5,min:35.3,orb:0.8,drb:4.6,mp_rating:82} },
+      { id:"cp3_1617",    name:"Chris Paul",     pos:"PG", team:"LAC", stats:{pts:18.1,reb:5.0,ast:9.2,fg_pct:0.468,three_pct:0.412,blk:0.2,stl:2.2,to:2.3,min:31.5,orb:0.9,drb:4.1,mp_rating:87} },
+      { id:"aldridge_1617",name:"LaMarcus Aldridge",pos:"C",team:"SAS",stats:{pts:17.3,reb:7.3,ast:1.6,fg_pct:0.511,three_pct:0.0,blk:0.9,stl:0.4,to:1.6,min:30.3,orb:2.3,drb:5.0,mp_rating:81} },
+      { id:"brogdon_1617",name:"Rudy Gobert",    pos:"C",  team:"UTA", stats:{pts:14.0,reb:12.8,ast:1.4,fg_pct:0.664,three_pct:0.0,blk:2.6,stl:1.0,to:2.2,min:31.0,orb:3.9,drb:8.9,mp_rating:84} },
+      { id:"kyrie_1617",  name:"Kyrie Irving",   pos:"PG", team:"CLE", stats:{pts:25.2,reb:3.2,ast:5.8,fg_pct:0.471,three_pct:0.401,blk:0.3,stl:1.2,to:2.5,min:35.1,orb:0.4,drb:2.8,mp_rating:86} },
+    ]
+  },
+  "2017-18": {
+    first: [
+      { id:"james_1718",  name:"LeBron James",   pos:"SF", team:"CLE", stats:{pts:27.5,reb:8.6,ast:9.1,fg_pct:0.542,three_pct:0.367,blk:0.9,stl:1.4,to:4.2,min:36.9,orb:1.3,drb:7.3,mp_rating:96} },
+      { id:"harden_1718", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:30.4,reb:5.4,ast:8.8,fg_pct:0.449,three_pct:0.367,blk:0.7,stl:1.8,to:5.4,min:35.4,orb:0.7,drb:4.7,mp_rating:94} },
+      { id:"durant_1718", name:"Kevin Durant",   pos:"SF", team:"GSW", stats:{pts:26.4,reb:6.8,ast:5.4,fg_pct:0.516,three_pct:0.419,blk:1.8,stl:0.7,to:2.9,min:34.3,orb:0.9,drb:5.9,mp_rating:93} },
+      { id:"curry_1718",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:26.4,reb:5.1,ast:6.1,fg_pct:0.490,three_pct:0.423,blk:0.2,stl:1.6,to:2.9,min:32.0,orb:0.7,drb:4.4,mp_rating:91} },
+      { id:"davis_1718",  name:"Anthony Davis",  pos:"C",  team:"NOP", stats:{pts:28.1,reb:11.1,ast:2.3,fg_pct:0.531,three_pct:0.341,blk:2.6,stl:1.5,to:2.6,min:36.0,orb:3.2,drb:7.9,mp_rating:94} },
+    ],
+    second: [
+      { id:"westbrook_1718",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:25.4,reb:10.1,ast:10.3,fg_pct:0.401,three_pct:0.296,blk:0.4,stl:1.7,to:5.0,min:34.7,orb:3.1,drb:7.0,mp_rating:89} },
+      { id:"giannis_1718",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:26.9,reb:10.0,ast:4.8,fg_pct:0.529,three_pct:0.307,blk:1.9,stl:1.4,to:4.4,min:36.7,orb:2.1,drb:7.9,mp_rating:91} },
+      { id:"kawhi_1718",  name:"Kawhi Leonard",  pos:"SF", team:"SAS", stats:{pts:16.2,reb:5.8,ast:3.0,fg_pct:0.498,three_pct:0.381,blk:0.7,stl:1.8,to:1.9,min:26.0,orb:0.7,drb:5.1,mp_rating:85} },
+      { id:"damian_1718", name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:26.9,reb:4.5,ast:6.6,fg_pct:0.438,three_pct:0.360,blk:0.3,stl:1.0,to:2.8,min:36.5,orb:0.7,drb:3.8,mp_rating:88} },
+      { id:"jokic_1718",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:18.5,reb:10.7,ast:6.1,fg_pct:0.504,three_pct:0.323,blk:0.8,stl:1.2,to:3.4,min:33.0,orb:2.9,drb:7.8,mp_rating:88} },
+    ],
+    third: [
+      { id:"pg_1718",     name:"Paul George",    pos:"SF", team:"OKC", stats:{pts:21.9,reb:5.7,ast:3.3,fg_pct:0.434,three_pct:0.360,blk:0.5,stl:2.2,to:2.6,min:35.6,orb:1.0,drb:4.7,mp_rating:84} },
+      { id:"cp3_1718",    name:"Chris Paul",     pos:"PG", team:"HOU", stats:{pts:18.6,reb:5.4,ast:7.9,fg_pct:0.476,three_pct:0.373,blk:0.2,stl:1.7,to:2.6,min:32.0,orb:0.9,drb:4.5,mp_rating:86} },
+      { id:"kyrie_1718",  name:"Kyrie Irving",   pos:"PG", team:"BOS", stats:{pts:24.4,reb:3.8,ast:5.1,fg_pct:0.491,three_pct:0.408,blk:0.3,stl:1.0,to:2.5,min:32.4,orb:0.4,drb:3.4,mp_rating:87} },
+      { id:"aldridge_1718",name:"LaMarcus Aldridge",pos:"C",team:"SAS",stats:{pts:23.1,reb:8.5,ast:2.0,fg_pct:0.504,three_pct:0.0,blk:1.2,stl:0.6,to:1.8,min:33.0,orb:2.2,drb:6.3,mp_rating:83} },
+      { id:"klay_1718",   name:"Klay Thompson",  pos:"SG", team:"GSW", stats:{pts:20.0,reb:3.8,ast:2.5,fg_pct:0.488,three_pct:0.440,blk:0.5,stl:0.9,to:1.4,min:34.0,orb:0.5,drb:3.3,mp_rating:83} },
+    ]
+  },
+  "2018-19": {
+    first: [
+      { id:"harden_1819", name:"James Harden",   pos:"SG", team:"HOU", stats:{pts:36.1,reb:6.6,ast:7.5,fg_pct:0.442,three_pct:0.368,blk:0.7,stl:2.0,to:5.1,min:36.8,orb:0.8,drb:5.8,mp_rating:95} },
+      { id:"giannis_1819",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:27.7,reb:12.5,ast:5.9,fg_pct:0.578,three_pct:0.258,blk:1.5,stl:1.3,to:3.7,min:32.8,orb:3.0,drb:9.5,mp_rating:94} },
+      { id:"durant_1819", name:"Kevin Durant",   pos:"SF", team:"GSW", stats:{pts:26.0,reb:6.4,ast:5.9,fg_pct:0.521,three_pct:0.351,blk:1.1,stl:0.7,to:2.8,min:34.2,orb:0.9,drb:5.5,mp_rating:92} },
+      { id:"kawhi_1819",  name:"Kawhi Leonard",  pos:"SF", team:"TOR", stats:{pts:26.6,reb:7.3,ast:3.3,fg_pct:0.496,three_pct:0.371,blk:0.4,stl:1.8,to:2.8,min:34.0,orb:1.6,drb:5.7,mp_rating:93} },
+      { id:"pg_1819",     name:"Paul George",    pos:"SF", team:"OKC", stats:{pts:28.0,reb:8.2,ast:4.1,fg_pct:0.438,three_pct:0.386,blk:0.4,stl:2.2,to:2.6,min:36.9,orb:1.2,drb:7.0,mp_rating:91} },
+    ],
+    second: [
+      { id:"curry_1819",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:27.3,reb:5.3,ast:5.2,fg_pct:0.476,three_pct:0.437,blk:0.2,stl:1.3,to:2.8,min:33.8,orb:0.7,drb:4.6,mp_rating:90} },
+      { id:"damian_1819", name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:25.8,reb:4.6,ast:6.9,fg_pct:0.431,three_pct:0.369,blk:0.3,stl:1.1,to:2.9,min:35.7,orb:0.7,drb:3.9,mp_rating:88} },
+      { id:"kyrie_1819",  name:"Kyrie Irving",   pos:"PG", team:"BOS", stats:{pts:23.8,reb:5.0,ast:6.9,fg_pct:0.487,three_pct:0.401,blk:0.4,stl:1.5,to:2.7,min:33.6,orb:0.8,drb:4.2,mp_rating:88} },
+      { id:"embiid_1819", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:27.5,reb:13.6,ast:3.7,fg_pct:0.480,three_pct:0.307,blk:3.7,stl:0.7,to:3.8,min:33.7,orb:3.8,drb:9.8,mp_rating:92} },
+      { id:"jokic_1819",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:20.1,reb:10.8,ast:7.3,fg_pct:0.511,three_pct:0.308,blk:0.7,stl:1.4,to:3.5,min:31.3,orb:3.0,drb:7.8,mp_rating:91} },
+    ],
+    third: [
+      { id:"james_1819",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:27.4,reb:8.5,ast:8.3,fg_pct:0.513,three_pct:0.339,blk:0.6,stl:1.3,to:4.2,min:35.2,orb:1.1,drb:7.4,mp_rating:93} },
+      { id:"gobert_1819", name:"Rudy Gobert",    pos:"C",  team:"UTA", stats:{pts:15.9,reb:12.9,ast:1.4,fg_pct:0.669,three_pct:0.0,blk:2.3,stl:0.8,to:2.0,min:32.2,orb:4.2,drb:8.7,mp_rating:84} },
+      { id:"westbrook_1819",name:"Russell Westbrook",pos:"PG",team:"OKC",stats:{pts:22.9,reb:11.1,ast:10.7,fg_pct:0.426,three_pct:0.291,blk:0.4,stl:1.9,to:4.3,min:36.0,orb:3.5,drb:7.6,mp_rating:88} },
+      { id:"kd2_1819",    name:"Klay Thompson",  pos:"SG", team:"GSW", stats:{pts:21.5,reb:3.8,ast:2.4,fg_pct:0.464,three_pct:0.402,blk:0.5,stl:1.1,to:1.8,min:34.0,orb:0.6,drb:3.2,mp_rating:83} },
+      { id:"aldridge_1819",name:"LaMarcus Aldridge",pos:"C",team:"SAS",stats:{pts:21.3,reb:9.2,ast:2.4,fg_pct:0.508,three_pct:0.0,blk:1.7,stl:0.6,to:1.6,min:33.1,orb:2.2,drb:7.0,mp_rating:83} },
+    ]
+  },
+  "2019-20": {
+    first: [
+      { id:"james_1920",  name:"LeBron James",   pos:"PG", team:"LAL", stats:{pts:25.3,reb:7.8,ast:10.2,fg_pct:0.493,three_pct:0.348,blk:0.5,stl:1.2,to:3.9,min:35.9,orb:1.0,drb:6.8,mp_rating:95} },
+      { id:"giannis_1920",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:29.5,reb:13.6,ast:5.6,fg_pct:0.553,three_pct:0.304,blk:1.0,stl:1.0,to:3.7,min:30.4,orb:2.2,drb:11.4,mp_rating:96} },
+      { id:"harden_1920", name:"James Harden",   pos:"PG", team:"HOU", stats:{pts:34.3,reb:6.4,ast:7.4,fg_pct:0.440,three_pct:0.355,blk:0.8,stl:1.8,to:5.1,min:36.5,orb:0.8,drb:5.6,mp_rating:93} },
+      { id:"kawhi_1920",  name:"Kawhi Leonard",  pos:"SF", team:"LAC", stats:{pts:27.1,reb:7.1,ast:4.9,fg_pct:0.516,three_pct:0.375,blk:0.4,stl:1.8,to:2.7,min:32.4,orb:1.4,drb:5.7,mp_rating:93} },
+      { id:"cp3_1920",    name:"Chris Paul",     pos:"PG", team:"OKC", stats:{pts:17.6,reb:5.0,ast:8.9,fg_pct:0.489,three_pct:0.356,blk:0.4,stl:1.6,to:2.3,min:32.0,orb:0.9,drb:4.1,mp_rating:86} },
+    ],
+    second: [
+      { id:"jokic_1920",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:20.2,reb:10.2,ast:6.9,fg_pct:0.528,three_pct:0.315,blk:0.5,stl:1.2,to:3.3,min:32.0,orb:2.9,drb:7.3,mp_rating:91} },
+      { id:"damian_1920", name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:30.0,reb:4.3,ast:8.0,fg_pct:0.463,three_pct:0.401,blk:0.3,stl:0.9,to:2.9,min:37.5,orb:0.4,drb:3.9,mp_rating:91} },
+      { id:"embiid_1920", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:23.4,reb:11.8,ast:3.1,fg_pct:0.476,three_pct:0.330,blk:1.3,stl:1.0,to:3.5,min:29.8,orb:3.0,drb:8.8,mp_rating:88} },
+      { id:"durant2_1920",name:"Kevin Durant",   pos:"SF", team:"BKN", stats:{pts:26.9,reb:7.1,ast:5.9,fg_pct:0.527,three_pct:0.350,blk:1.3,stl:0.7,to:3.0,min:34.6,orb:0.9,drb:6.2,mp_rating:91} },
+      { id:"luka_1920",   name:"Luka Doncic",    pos:"PG", team:"DAL", stats:{pts:28.8,reb:9.4,ast:8.8,fg_pct:0.463,three_pct:0.319,blk:0.2,stl:1.0,to:4.3,min:33.5,orb:2.4,drb:7.0,mp_rating:92} },
+    ],
+    third: [
+      { id:"pg_1920",     name:"Paul George",    pos:"SF", team:"LAC", stats:{pts:21.5,reb:5.7,ast:3.9,fg_pct:0.437,three_pct:0.414,blk:0.5,stl:1.7,to:2.1,min:32.1,orb:0.9,drb:4.8,mp_rating:84} },
+      { id:"siakam_1920", name:"Pascal Siakam",  pos:"PF", team:"TOR", stats:{pts:22.9,reb:7.3,ast:3.5,fg_pct:0.453,three_pct:0.359,blk:0.9,stl:1.1,to:3.3,min:35.5,orb:2.0,drb:5.3,mp_rating:84} },
+      { id:"booker_1920", name:"Devin Booker",   pos:"SG", team:"PHX", stats:{pts:26.1,reb:4.0,ast:6.3,fg_pct:0.489,three_pct:0.338,blk:0.3,stl:0.8,to:2.9,min:35.0,orb:0.6,drb:3.4,mp_rating:84} },
+      { id:"westbrook_1920",name:"Russell Westbrook",pos:"PG",team:"HOU",stats:{pts:27.2,reb:7.9,ast:7.0,fg_pct:0.477,three_pct:0.257,blk:0.5,stl:1.6,to:4.5,min:35.5,orb:2.3,drb:5.6,mp_rating:83} },
+      { id:"kd3_1920",    name:"Khris Middleton",pos:"SF",team:"MIL",stats:{pts:20.9,reb:6.2,ast:4.3,fg_pct:0.497,three_pct:0.416,blk:0.5,stl:1.3,to:1.8,min:30.1,orb:0.9,drb:5.3,mp_rating:82} },
+    ]
+  },
+  "2020-21": {
+    first: [
+      { id:"jokic_2021",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:26.4,reb:10.8,ast:8.3,fg_pct:0.568,three_pct:0.388,blk:0.7,stl:1.3,to:3.1,min:34.6,orb:2.6,drb:8.2,mp_rating:97} },
+      { id:"embiid_2021", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:28.5,reb:10.6,ast:2.9,fg_pct:0.511,three_pct:0.379,blk:1.4,stl:1.0,to:3.2,min:30.8,orb:2.3,drb:8.3,mp_rating:93} },
+      { id:"giannis_2021",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:28.1,reb:11.0,ast:5.9,fg_pct:0.569,three_pct:0.304,blk:1.2,stl:1.2,to:3.9,min:33.5,orb:2.0,drb:9.0,mp_rating:94} },
+      { id:"stephen_2021",name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:32.0,reb:5.5,ast:5.8,fg_pct:0.482,three_pct:0.421,blk:0.1,stl:1.2,to:3.4,min:34.2,orb:0.4,drb:5.1,mp_rating:96} },
+      { id:"luka_2021",   name:"Luka Doncic",    pos:"PG", team:"DAL", stats:{pts:27.7,reb:8.0,ast:8.6,fg_pct:0.479,three_pct:0.352,blk:0.5,stl:1.0,to:4.3,min:34.3,orb:1.9,drb:6.1,mp_rating:93} },
+    ],
+    second: [
+      { id:"james_2021",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:25.0,reb:7.7,ast:7.8,fg_pct:0.513,three_pct:0.365,blk:1.1,stl:1.1,to:3.7,min:33.4,orb:0.6,drb:7.1,mp_rating:93} },
+      { id:"pg_2021",     name:"Paul George",    pos:"SF", team:"LAC", stats:{pts:23.3,reb:6.6,ast:5.2,fg_pct:0.435,three_pct:0.390,blk:0.5,stl:1.6,to:2.9,min:32.8,orb:1.0,drb:5.6,mp_rating:87} },
+      { id:"damian_2021", name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:28.8,reb:4.2,ast:7.5,fg_pct:0.451,three_pct:0.391,blk:0.3,stl:0.9,to:3.1,min:35.8,orb:0.4,drb:3.8,mp_rating:90} },
+      { id:"kawhi_2021",  name:"Kawhi Leonard",  pos:"SF", team:"LAC", stats:{pts:24.8,reb:6.5,ast:5.2,fg_pct:0.516,three_pct:0.394,blk:0.4,stl:1.6,to:2.0,min:31.1,orb:0.9,drb:5.6,mp_rating:91} },
+      { id:"durant2_2021",name:"Kevin Durant",   pos:"SF", team:"BKN", stats:{pts:26.9,reb:7.1,ast:5.6,fg_pct:0.537,three_pct:0.449,blk:1.1,stl:0.7,to:3.4,min:33.0,orb:0.9,drb:6.2,mp_rating:93} },
+    ],
+    third: [
+      { id:"kyrie_2021",  name:"Kyrie Irving",   pos:"PG", team:"BKN", stats:{pts:26.9,reb:4.8,ast:6.0,fg_pct:0.512,three_pct:0.404,blk:0.4,stl:1.4,to:2.8,min:34.0,orb:0.7,drb:4.1,mp_rating:88} },
+      { id:"harden_2021", name:"James Harden",   pos:"PG", team:"BKN", stats:{pts:24.6,reb:8.5,ast:10.9,fg_pct:0.472,three_pct:0.368,blk:0.8,stl:1.2,to:4.6,min:36.7,orb:1.2,drb:7.3,mp_rating:89} },
+      { id:"bam_2021",    name:"Bam Adebayo",    pos:"C",  team:"MIA", stats:{pts:18.7,reb:9.0,ast:5.4,fg_pct:0.570,three_pct:0.0,blk:1.2,stl:1.5,to:2.7,min:34.6,orb:2.7,drb:6.3,mp_rating:84} },
+      { id:"siakam_2021", name:"Pascal Siakam",  pos:"PF", team:"TOR", stats:{pts:21.4,reb:7.2,ast:4.5,fg_pct:0.471,three_pct:0.350,blk:0.7,stl:1.2,to:3.5,min:35.0,orb:2.0,drb:5.2,mp_rating:82} },
+      { id:"gobert_2021", name:"Rudy Gobert",    pos:"C",  team:"UTA", stats:{pts:14.3,reb:13.5,ast:1.3,fg_pct:0.680,three_pct:0.0,blk:2.7,stl:0.9,to:2.0,min:31.6,orb:4.1,drb:9.4,mp_rating:84} },
+    ]
+  },
+  "2021-22": {
+    first: [
+      { id:"jokic_2122",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:27.1,reb:13.8,ast:7.9,fg_pct:0.583,three_pct:0.338,blk:0.9,stl:1.5,to:3.5,min:33.9,orb:3.9,drb:9.9,mp_rating:98} },
+      { id:"giannis_2122",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:29.9,reb:11.6,ast:5.8,fg_pct:0.553,three_pct:0.293,blk:1.4,stl:1.1,to:3.7,min:32.4,orb:2.7,drb:8.9,mp_rating:96} },
+      { id:"luka_2122",   name:"Luka Doncic",    pos:"PG", team:"DAL", stats:{pts:28.4,reb:9.1,ast:8.7,fg_pct:0.457,three_pct:0.350,blk:0.4,stl:1.2,to:4.4,min:35.2,orb:2.4,drb:6.7,mp_rating:93} },
+      { id:"devin_2122",  name:"Devin Booker",   pos:"SG", team:"PHX", stats:{pts:26.8,reb:5.0,ast:4.8,fg_pct:0.466,three_pct:0.351,blk:0.3,stl:0.9,to:3.0,min:34.8,orb:0.7,drb:4.3,mp_rating:88} },
+      { id:"ja_2122",     name:"Ja Morant",      pos:"PG", team:"MEM", stats:{pts:27.4,reb:5.7,ast:6.7,fg_pct:0.495,three_pct:0.342,blk:0.4,stl:1.2,to:3.2,min:32.6,orb:1.0,drb:4.7,mp_rating:89} },
+    ],
+    second: [
+      { id:"curry_2122",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:25.5,reb:5.2,ast:6.3,fg_pct:0.437,three_pct:0.380,blk:0.4,stl:1.3,to:3.2,min:34.5,orb:0.5,drb:4.7,mp_rating:89} },
+      { id:"james_2122",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:30.3,reb:8.2,ast:6.2,fg_pct:0.524,three_pct:0.359,blk:1.1,stl:1.3,to:3.5,min:37.2,orb:1.1,drb:7.1,mp_rating:94} },
+      { id:"tatum_2122",  name:"Jayson Tatum",   pos:"SF", team:"BOS", stats:{pts:26.9,reb:8.0,ast:4.4,fg_pct:0.453,three_pct:0.351,blk:0.7,stl:1.1,to:2.9,min:36.9,orb:1.4,drb:6.6,mp_rating:88} },
+      { id:"durant3_2122",name:"Kevin Durant",   pos:"SF", team:"BKN", stats:{pts:29.9,reb:7.4,ast:6.4,fg_pct:0.518,three_pct:0.382,blk:0.9,stl:0.9,to:3.5,min:37.2,orb:0.8,drb:6.6,mp_rating:93} },
+      { id:"embiid_2122", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:30.6,reb:11.7,ast:4.2,fg_pct:0.499,three_pct:0.374,blk:1.5,stl:1.1,to:3.5,min:33.7,orb:2.8,drb:8.9,mp_rating:93} },
+    ],
+    third: [
+      { id:"cp3_2122",    name:"Chris Paul",     pos:"PG", team:"PHX", stats:{pts:14.7,reb:4.5,ast:10.8,fg_pct:0.493,three_pct:0.374,blk:0.2,stl:1.9,to:1.9,min:31.8,orb:0.5,drb:4.0,mp_rating:84} },
+      { id:"pg2_2122",    name:"Paul George",    pos:"SF", team:"LAC", stats:{pts:24.3,reb:6.9,ast:5.5,fg_pct:0.443,three_pct:0.360,blk:0.4,stl:2.0,to:2.6,min:32.9,orb:1.2,drb:5.7,mp_rating:86} },
+      { id:"morant2_2122",name:"Ja Morant",      pos:"PG", team:"MEM", stats:{pts:27.4,reb:5.7,ast:6.7,fg_pct:0.495,three_pct:0.342,blk:0.4,stl:1.2,to:3.2,min:32.6,orb:1.0,drb:4.7,mp_rating:89} },
+      { id:"brown_2122",  name:"Jaylen Brown",   pos:"SG", team:"BOS", stats:{pts:23.6,reb:6.1,ast:3.5,fg_pct:0.470,three_pct:0.354,blk:0.4,stl:1.1,to:2.7,min:35.8,orb:1.1,drb:5.0,mp_rating:83} },
+      { id:"fox_2122",    name:"De'Aaron Fox",   pos:"PG", team:"SAC", stats:{pts:23.2,reb:4.2,ast:5.8,fg_pct:0.504,three_pct:0.300,blk:0.3,stl:1.6,to:3.5,min:34.8,orb:0.8,drb:3.4,mp_rating:82} },
+    ]
+  },
+  "2022-23": {
+    first: [
+      { id:"jokic_2223",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:24.5,reb:11.8,ast:9.8,fg_pct:0.632,three_pct:0.383,blk:0.7,stl:1.3,to:3.6,min:33.7,orb:2.5,drb:9.3,mp_rating:98} },
+      { id:"giannis_2223",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:31.1,reb:11.8,ast:5.7,fg_pct:0.553,three_pct:0.275,blk:0.8,stl:0.8,to:3.9,min:32.1,orb:1.7,drb:10.1,mp_rating:95} },
+      { id:"tatum_2223",  name:"Jayson Tatum",   pos:"SF", team:"BOS", stats:{pts:30.1,reb:8.8,ast:4.6,fg_pct:0.466,three_pct:0.350,blk:0.7,stl:1.1,to:2.9,min:36.9,orb:1.7,drb:7.1,mp_rating:92} },
+      { id:"sga_2223",    name:"Shai Gilgeous-Alexander",pos:"SG",team:"OKC",stats:{pts:31.4,reb:5.5,ast:6.2,fg_pct:0.508,three_pct:0.347,blk:0.8,stl:1.6,to:2.7,min:35.3,orb:0.9,drb:4.6,mp_rating:93} },
+      { id:"luka_2223",   name:"Luka Doncic",    pos:"PG", team:"DAL", stats:{pts:32.4,reb:8.6,ast:8.0,fg_pct:0.496,three_pct:0.356,blk:0.5,stl:1.4,to:3.6,min:36.2,orb:2.2,drb:6.4,mp_rating:95} },
+    ],
+    second: [
+      { id:"james_2223",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:28.9,reb:8.3,ast:6.8,fg_pct:0.500,three_pct:0.326,blk:0.5,stl:1.3,to:3.5,min:35.5,orb:1.3,drb:7.0,mp_rating:92} },
+      { id:"embiid_2223", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:33.1,reb:10.2,ast:4.2,fg_pct:0.529,three_pct:0.331,blk:1.7,stl:1.0,to:3.4,min:34.6,orb:2.3,drb:7.9,mp_rating:95} },
+      { id:"jimmy_2223",  name:"Jimmy Butler",   pos:"SF", team:"MIA", stats:{pts:22.9,reb:5.9,ast:4.9,fg_pct:0.535,three_pct:0.350,blk:0.3,stl:1.8,to:2.8,min:33.8,orb:1.1,drb:4.8,mp_rating:87} },
+      { id:"devin_2223",  name:"Devin Booker",   pos:"SG", team:"PHX", stats:{pts:27.8,reb:4.5,ast:5.5,fg_pct:0.488,three_pct:0.350,blk:0.3,stl:0.9,to:2.9,min:33.3,orb:0.8,drb:3.7,mp_rating:88} },
+      { id:"cp3_2223",    name:"Ja Morant",      pos:"PG", team:"MEM", stats:{pts:26.2,reb:5.9,ast:8.1,fg_pct:0.472,three_pct:0.302,blk:0.5,stl:1.1,to:3.4,min:32.9,orb:1.4,drb:4.5,mp_rating:88} },
+    ],
+    third: [
+      { id:"curry_2223",  name:"Stephen Curry",  pos:"PG", team:"GSW", stats:{pts:29.4,reb:6.1,ast:6.3,fg_pct:0.490,three_pct:0.427,blk:0.4,stl:0.9,to:3.0,min:34.7,orb:0.7,drb:5.4,mp_rating:90} },
+      { id:"durant4_2223",name:"Kevin Durant",   pos:"SF", team:"BKN/PHX", stats:{pts:29.1,reb:6.7,ast:5.0,fg_pct:0.556,three_pct:0.380,blk:1.4,stl:0.8,to:3.3,min:35.7,orb:0.9,drb:5.8,mp_rating:93} },
+      { id:"dame_2223",   name:"Damian Lillard", pos:"PG", team:"POR", stats:{pts:32.2,reb:4.8,ast:7.3,fg_pct:0.460,three_pct:0.370,blk:0.4,stl:0.9,to:3.1,min:36.3,orb:0.5,drb:4.3,mp_rating:91} },
+      { id:"tatum2_2223", name:"Jaylen Brown",   pos:"SG", team:"BOS", stats:{pts:26.6,reb:6.9,ast:3.5,fg_pct:0.491,three_pct:0.331,blk:0.3,stl:1.1,to:2.4,min:36.2,orb:1.6,drb:5.3,mp_rating:85} },
+      { id:"siakam_2223", name:"Pascal Siakam",  pos:"PF", team:"TOR", stats:{pts:24.2,reb:7.8,ast:5.8,fg_pct:0.505,three_pct:0.340,blk:0.5,stl:1.0,to:3.3,min:36.0,orb:2.2,drb:5.6,mp_rating:84} },
+    ]
+  },
+  "2023-24": {
+    first: [
+      { id:"jokic_2324",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:26.4,reb:12.4,ast:9.0,fg_pct:0.583,three_pct:0.359,blk:0.9,stl:1.4,to:2.9,min:34.6,orb:2.8,drb:9.6,mp_rating:98} },
+      { id:"sga_2324",    name:"Shai Gilgeous-Alexander",pos:"SG",team:"OKC",stats:{pts:30.1,reb:5.5,ast:6.2,fg_pct:0.535,three_pct:0.327,blk:0.9,stl:2.0,to:2.5,min:33.9,orb:0.9,drb:4.6,mp_rating:94} },
+      { id:"giannis_2324",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:30.4,reb:11.5,ast:6.5,fg_pct:0.611,three_pct:0.274,blk:1.1,stl:1.2,to:3.4,min:35.2,orb:2.5,drb:9.0,mp_rating:96} },
+      { id:"luka_2324",   name:"Luka Doncic",    pos:"PG", team:"DAL", stats:{pts:33.9,reb:9.2,ast:9.8,fg_pct:0.487,three_pct:0.382,blk:0.5,stl:1.4,to:4.0,min:37.5,orb:2.5,drb:6.7,mp_rating:96} },
+      { id:"tatum_2324",  name:"Jayson Tatum",   pos:"SF", team:"BOS", stats:{pts:26.9,reb:8.1,ast:4.9,fg_pct:0.471,three_pct:0.378,blk:0.6,stl:1.0,to:2.5,min:35.7,orb:1.5,drb:6.6,mp_rating:91} },
+    ],
+    second: [
+      { id:"james_2324",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:25.7,reb:7.3,ast:8.3,fg_pct:0.540,three_pct:0.410,blk:0.6,stl:1.3,to:3.5,min:35.3,orb:0.7,drb:6.6,mp_rating:91} },
+      { id:"devin_2324",  name:"Devin Booker",   pos:"SG", team:"PHX", stats:{pts:27.1,reb:4.5,ast:6.9,fg_pct:0.497,three_pct:0.362,blk:0.4,stl:0.9,to:3.0,min:34.4,orb:0.6,drb:3.9,mp_rating:88} },
+      { id:"embiid_2324", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:34.7,reb:11.0,ast:5.6,fg_pct:0.528,three_pct:0.381,blk:1.7,stl:1.2,to:3.7,min:33.1,orb:2.6,drb:8.4,mp_rating:95} },
+      { id:"pg3_2324",    name:"Paul George",    pos:"SF", team:"LAC", stats:{pts:22.6,reb:5.2,ast:3.6,fg_pct:0.454,three_pct:0.388,blk:0.6,stl:1.6,to:2.1,min:31.6,orb:0.9,drb:4.3,mp_rating:84} },
+      { id:"dame_2324",   name:"Damian Lillard", pos:"PG", team:"MIL", stats:{pts:24.3,reb:4.4,ast:7.0,fg_pct:0.432,three_pct:0.355,blk:0.2,stl:0.7,to:2.7,min:33.3,orb:0.5,drb:3.9,mp_rating:86} },
+    ],
+    third: [
+      { id:"kawhi_2324",  name:"Kawhi Leonard",  pos:"SF", team:"LAC", stats:{pts:23.7,reb:6.1,ast:3.6,fg_pct:0.521,three_pct:0.378,blk:0.5,stl:1.6,to:2.0,min:29.6,orb:1.3,drb:4.8,mp_rating:88} },
+      { id:"ant_2324",    name:"Anthony Edwards",pos:"SG",team:"MIN",stats:{pts:25.9,reb:5.4,ast:5.1,fg_pct:0.461,three_pct:0.355,blk:0.5,stl:1.3,to:3.0,min:35.9,orb:0.9,drb:4.5,mp_rating:88} },
+      { id:"banchero_2324",name:"Paolo Banchero",pos:"PF",team:"ORL",stats:{pts:22.6,reb:6.9,ast:5.4,fg_pct:0.467,three_pct:0.271,blk:0.8,stl:1.0,to:3.5,min:33.1,orb:2.3,drb:4.6,mp_rating:83} },
+      { id:"durant5_2324",name:"Kevin Durant",   pos:"SF", team:"PHX", stats:{pts:27.1,reb:6.6,ast:5.0,fg_pct:0.528,three_pct:0.410,blk:1.2,stl:0.9,to:3.3,min:37.2,orb:0.9,drb:5.7,mp_rating:91} },
+      { id:"brown2_2324", name:"Jaylen Brown",   pos:"SG", team:"BOS", stats:{pts:23.0,reb:5.5,ast:3.6,fg_pct:0.491,three_pct:0.376,blk:0.4,stl:1.2,to:2.7,min:33.6,orb:1.1,drb:4.4,mp_rating:84} },
+    ]
+  },
+  "2024-25": {
+    first: [
+      { id:"jokic_2425",  name:"Nikola Jokic",   pos:"C",  team:"DEN", stats:{pts:29.6,reb:12.7,ast:10.2,fg_pct:0.592,three_pct:0.400,blk:0.9,stl:1.5,to:3.2,min:35.0,orb:2.8,drb:9.9,mp_rating:99} },
+      { id:"sga_2425",    name:"Shai Gilgeous-Alexander",pos:"SG",team:"OKC",stats:{pts:32.7,reb:5.1,ast:6.4,fg_pct:0.548,three_pct:0.358,blk:1.0,stl:2.1,to:2.4,min:33.8,orb:0.8,drb:4.3,mp_rating:96} },
+      { id:"giannis_2425",name:"Giannis Antetokounmpo",pos:"PF",team:"MIL",stats:{pts:32.7,reb:11.4,ast:5.9,fg_pct:0.601,three_pct:0.218,blk:0.9,stl:1.2,to:3.4,min:34.3,orb:2.8,drb:8.6,mp_rating:96} },
+      { id:"luka_2425",   name:"Luka Doncic",    pos:"PG", team:"LAL", stats:{pts:28.3,reb:8.3,ast:8.0,fg_pct:0.475,three_pct:0.350,blk:0.4,stl:1.4,to:3.6,min:35.0,orb:2.0,drb:6.3,mp_rating:93} },
+      { id:"tatum_2425",  name:"Jayson Tatum",   pos:"SF", team:"BOS", stats:{pts:26.6,reb:8.8,ast:4.8,fg_pct:0.455,three_pct:0.362,blk:0.7,stl:1.0,to:2.6,min:35.5,orb:1.7,drb:7.1,mp_rating:91} },
+    ],
+    second: [
+      { id:"ant_2425",    name:"Anthony Edwards",pos:"SG",team:"MIN",stats:{pts:27.9,reb:5.8,ast:5.0,fg_pct:0.472,three_pct:0.367,blk:0.5,stl:1.4,to:3.1,min:35.0,orb:0.9,drb:4.9,mp_rating:90} },
+      { id:"embiid_2425", name:"Joel Embiid",    pos:"C",  team:"PHI", stats:{pts:24.6,reb:10.4,ast:4.0,fg_pct:0.506,three_pct:0.352,blk:1.5,stl:0.9,to:3.2,min:27.0,orb:2.4,drb:8.0,mp_rating:88} },
+      { id:"james_2425",  name:"LeBron James",   pos:"SF", team:"LAL", stats:{pts:24.0,reb:7.3,ast:8.2,fg_pct:0.524,three_pct:0.396,blk:0.5,stl:1.1,to:3.6,min:35.1,orb:0.8,drb:6.5,mp_rating:89} },
+      { id:"tatum2_2425", name:"Jaylen Brown",   pos:"SG", team:"BOS", stats:{pts:25.5,reb:5.8,ast:3.7,fg_pct:0.484,three_pct:0.360,blk:0.4,stl:1.1,to:2.5,min:34.2,orb:1.2,drb:4.6,mp_rating:85} },
+      { id:"dame_2425",   name:"Damian Lillard", pos:"PG", team:"MIL", stats:{pts:25.2,reb:4.5,ast:7.2,fg_pct:0.449,three_pct:0.378,blk:0.2,stl:0.8,to:2.8,min:34.5,orb:0.4,drb:4.1,mp_rating:87} },
+    ],
+    third: [
+      { id:"durant6_2425",name:"Kevin Durant",   pos:"SF", team:"PHX", stats:{pts:26.5,reb:6.4,ast:4.8,fg_pct:0.521,three_pct:0.392,blk:1.1,stl:0.9,to:3.2,min:35.5,orb:0.8,drb:5.6,mp_rating:89} },
+      { id:"victor_2425", name:"Victor Wembanyama",pos:"C",team:"SAS",stats:{pts:24.6,reb:10.6,ast:3.9,fg_pct:0.483,three_pct:0.342,blk:3.6,stl:1.5,to:3.2,min:33.5,orb:2.6,drb:8.0,mp_rating:90} },
+      { id:"bron2_2425",  name:"Bronny James",   pos:"PG", team:"LAL", stats:{pts:7.4,reb:2.8,ast:2.0,fg_pct:0.413,three_pct:0.310,blk:0.3,stl:0.6,to:1.2,min:18.0,orb:0.5,drb:2.3,mp_rating:65} },
+      { id:"fox2_2425",   name:"De'Aaron Fox",   pos:"PG", team:"SAS", stats:{pts:25.2,reb:4.8,ast:7.6,fg_pct:0.484,three_pct:0.319,blk:0.2,stl:1.5,to:3.4,min:34.5,orb:0.8,drb:4.0,mp_rating:85} },
+      { id:"cade_2425",   name:"Cade Cunningham",pos:"PG", team:"DET", stats:{pts:26.7,reb:6.0,ast:9.2,fg_pct:0.471,three_pct:0.370,blk:0.4,stl:1.0,to:3.5,min:35.5,orb:1.1,drb:4.9,mp_rating:87} },
+    ]
+  }
+};
+
+const SEASONS = Object.keys(ALL_NBA_DATA).sort();
+
+// ============================================================
+//  STATE
+// ============================================================
+let state = {
+  teams: { a: { starters: [], bench: [] }, b: { starters: [], bench: [] } },
+  gameResult: null,
+  selectedSeasons: { a: null, b: null }
+};
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function rng(min, max) { return Math.random() * (max - min) + min; }
+function rngInt(min, max) { return Math.floor(rng(min, max + 1)); }
+
+function getPlayerBaseName(player) {
+  // returns consistent player name without season to detect duplicate player
+  return player.name.toLowerCase().replace(/[^a-z]/g,'');
+}
+
+// ============================================================
+//  PLAYER IMAGE URLs (use NBA CDN silhouettes as fallback)
+// ============================================================
+const PLAYER_IMGS = {
+  // Real headshots from NBA official CDN
+  "lebron": "https://cdn.nba.com/headshots/nba/latest/260x190/2544.png",
+  "curry": "https://cdn.nba.com/headshots/nba/latest/260x190/201939.png",
+  "durant": "https://cdn.nba.com/headshots/nba/latest/260x190/201142.png",
+  "giannis": "https://cdn.nba.com/headshots/nba/latest/260x190/203507.png",
+  "jokic": "https://cdn.nba.com/headshots/nba/latest/260x190/203999.png",
+  "embiid": "https://cdn.nba.com/headshots/nba/latest/260x190/203954.png",
+  "luka": "https://cdn.nba.com/headshots/nba/latest/260x190/1629029.png",
+  "sga": "https://cdn.nba.com/headshots/nba/latest/260x190/1628983.png",
+  "tatum": "https://cdn.nba.com/headshots/nba/latest/260x190/1628369.png",
+  "harden": "https://cdn.nba.com/headshots/nba/latest/260x190/201935.png",
+  "westbrook": "https://cdn.nba.com/headshots/nba/latest/260x190/201566.png",
+  "kawhi": "https://cdn.nba.com/headshots/nba/latest/260x190/202695.png",
+  "kobe": "https://cdn.nba.com/headshots/nba/latest/260x190/977.png",
+  "cp3": "https://cdn.nba.com/headshots/nba/latest/260x190/101108.png",
+  "dwight": "https://cdn.nba.com/headshots/nba/latest/260x190/2730.png",
+  "dirk": "https://cdn.nba.com/headshots/nba/latest/260x190/1717.png",
+  "melo": "https://cdn.nba.com/headshots/nba/latest/260x190/2546.png",
+  "kyrie": "https://cdn.nba.com/headshots/nba/latest/260x190/202681.png",
+  "klay": "https://cdn.nba.com/headshots/nba/latest/260x190/202691.png",
+  "damian": "https://cdn.nba.com/headshots/nba/latest/260x190/203081.png",
+  "paul_george": "https://cdn.nba.com/headshots/nba/latest/260x190/202331.png",
+  "davis": "https://cdn.nba.com/headshots/nba/latest/260x190/203076.png",
+  "rose": "https://cdn.nba.com/headshots/nba/latest/260x190/201565.png",
+  "dwade": "https://cdn.nba.com/headshots/nba/latest/260x190/2548.png",
+  "aldridge": "https://cdn.nba.com/headshots/nba/latest/260x190/200746.png",
+  "timD": "https://cdn.nba.com/headshots/nba/latest/260x190/1495.png",
+  "gasol": "https://cdn.nba.com/headshots/nba/latest/260x190/2200.png",
+  "marc": "https://cdn.nba.com/headshots/nba/latest/260x190/201188.png",
+  "blake": "https://cdn.nba.com/headshots/nba/latest/260x190/201933.png",
+  "draymond": "https://cdn.nba.com/headshots/nba/latest/260x190/203110.png",
+  "bam": "https://cdn.nba.com/headshots/nba/latest/260x190/1628389.png",
+  "ja": "https://cdn.nba.com/headshots/nba/latest/260x190/1629630.png",
+  "devin": "https://cdn.nba.com/headshots/nba/latest/260x190/1626164.png",
+  "jimmy": "https://cdn.nba.com/headshots/nba/latest/260x190/202710.png",
+  "tatum2": "https://cdn.nba.com/headshots/nba/latest/260x190/1628384.png",
+  "ant": "https://cdn.nba.com/headshots/nba/latest/260x190/1631107.png",
+  "victor": "https://cdn.nba.com/headshots/nba/latest/260x190/1641705.png",
+  "cade": "https://cdn.nba.com/headshots/nba/latest/260x190/1630595.png",
+  "fox": "https://cdn.nba.com/headshots/nba/latest/260x190/1628368.png",
+  "isaiah": "https://cdn.nba.com/headshots/nba/latest/260x190/1990.png",
+  "siakam": "https://cdn.nba.com/headshots/nba/latest/260x190/1627783.png",
+  "gobert": "https://cdn.nba.com/headshots/nba/latest/260x190/203497.png",
+  "kp": "https://cdn.nba.com/headshots/nba/latest/260x190/204001.png",
+};
+
+function getPlayerImg(player) {
+  const n = player.name.toLowerCase();
+  // match by keywords
+  if(n.includes('jokic')) return PLAYER_IMGS.jokic;
+  if(n.includes('giannis') || n.includes('antetokounmpo')) return PLAYER_IMGS.giannis;
+  if(n.includes('lebron') || (n.includes('james') && !n.includes('harden') && !n.includes('kyrie'))) return PLAYER_IMGS.lebron;
+  if(n.includes('curry') && n.includes('stephen')) return PLAYER_IMGS.curry;
+  if(n.includes('durant')) return PLAYER_IMGS.durant;
+  if(n.includes('embiid')) return PLAYER_IMGS.embiid;
+  if(n.includes('doncic') || n.includes('luka')) return PLAYER_IMGS.luka;
+  if(n.includes('gilgeous') || n.includes('shai')) return PLAYER_IMGS.sga;
+  if(n.includes('tatum') && n.includes('jayson')) return PLAYER_IMGS.tatum;
+  if(n.includes('harden')) return PLAYER_IMGS.harden;
+  if(n.includes('westbrook')) return PLAYER_IMGS.westbrook;
+  if(n.includes('kawhi') || n.includes('leonard')) return PLAYER_IMGS.kawhi;
+  if(n.includes('kobe')) return PLAYER_IMGS.kobe;
+  if(n.includes('chris paul')) return PLAYER_IMGS.cp3;
+  if(n.includes('dwight')) return PLAYER_IMGS.dwight;
+  if(n.includes('dirk') || n.includes('nowitzki')) return PLAYER_IMGS.dirk;
+  if(n.includes('carmelo') || n.includes('melo')) return PLAYER_IMGS.melo;
+  if(n.includes('kyrie')) return PLAYER_IMGS.kyrie;
+  if(n.includes('klay')) return PLAYER_IMGS.klay;
+  if(n.includes('lillard') || n.includes('damian')) return PLAYER_IMGS.damian;
+  if(n.includes('paul george')) return PLAYER_IMGS.paul_george;
+  if(n.includes('anthony davis')) return PLAYER_IMGS.davis;
+  if(n.includes('derrick rose')) return PLAYER_IMGS.rose;
+  if(n.includes('dwyane') || n.includes('dwade')) return PLAYER_IMGS.dwade;
+  if(n.includes('aldridge')) return PLAYER_IMGS.aldridge;
+  if(n.includes('tim duncan')) return PLAYER_IMGS.timD;
+  if(n.includes('pau gasol')) return PLAYER_IMGS.gasol;
+  if(n.includes('marc gasol')) return PLAYER_IMGS.marc;
+  if(n.includes('blake griffin')) return PLAYER_IMGS.blake;
+  if(n.includes('draymond')) return PLAYER_IMGS.draymond;
+  if(n.includes('adebayo') || n.includes('bam')) return PLAYER_IMGS.bam;
+  if(n.includes('morant') || n.includes('ja ')) return PLAYER_IMGS.ja;
+  if(n.includes('booker') || n.includes('devin')) return PLAYER_IMGS.devin;
+  if(n.includes('jimmy butler')) return PLAYER_IMGS.jimmy;
+  if(n.includes('jaylen brown')) return PLAYER_IMGS.tatum2;
+  if(n.includes('anthony edwards') || n.includes('ant')) return PLAYER_IMGS.ant;
+  if(n.includes('wembanyama') || n.includes('victor')) return PLAYER_IMGS.victor;
+  if(n.includes('cunningham') || n.includes('cade')) return PLAYER_IMGS.cade;
+  if(n.includes("de'aaron") || n.includes('fox')) return PLAYER_IMGS.fox;
+  if(n.includes('isaiah thomas')) return PLAYER_IMGS.isaiah;
+  if(n.includes('siakam')) return PLAYER_IMGS.siakam;
+  if(n.includes('gobert') || n.includes('rudy')) return PLAYER_IMGS.gobert;
+  if(n.includes('porzingis')) return PLAYER_IMGS.kp;
+  // fallback silhouette
+  return `https://cdn.nba.com/headshots/nba/latest/260x190/fallback.png`;
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  const selA = document.getElementById('season-a');
+  const selB = document.getElementById('season-b');
+  SEASONS.forEach(s => {
+    selA.innerHTML += `<option value="${s}">${s} Season</option>`;
+    selB.innerHTML += `<option value="${s}">${s} Season</option>`;
+  });
+  renderLineupSlots('a');
+  renderLineupSlots('b');
+}
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function goToSelect() {
+  showScreen('select');
+}
+function goHome() {
+  state = { teams: { a: { starters: [], bench: [] }, b: { starters: [], bench: [] } }, gameResult: null, selectedSeasons: { a: null, b: null } };
+  document.getElementById('season-a').value = '';
+  document.getElementById('season-b').value = '';
+  document.getElementById('allnba-a').innerHTML = '';
+  document.getElementById('allnba-b').innerHTML = '';
+  renderLineupSlots('a');
+  renderLineupSlots('b');
+  updateSimBtn();
+  showScreen('intro');
+}
+
+// ============================================================
+//  SEASON LOADING
+// ============================================================
+function loadSeason(team) {
+  const sel = document.getElementById('season-' + team);
+  const season = sel.value;
+  state.selectedSeasons[team] = season;
+  const container = document.getElementById('allnba-' + team);
+  if (!season || !ALL_NBA_DATA[season]) { container.innerHTML = ''; return; }
+  const data = ALL_NBA_DATA[season];
+  let html = '';
+  ['first','second','third'].forEach((tier, ti) => {
+    const label = ['🥇 1ST TEAM','🥈 2ND TEAM','🥉 3RD TEAM'][ti];
+    html += `<div class="allnba-tier-label">${label}</div><div class="allnba-players-grid">`;
+    data[tier].forEach(p => {
+      const isSelected = isPlayerSelected(p.id, team);
+      const isUsed = isPlayerUsedByOther(p);
+      html += `<div class="player-card ${isSelected?'selected':''} ${isUsed?'disabled':''}" onclick="selectPlayer('${p.id}','${team}','${season}')" id="pcard-${team}-${p.id}">
+        <div class="img-wrap"><img src="${getPlayerImg(p)}" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23111%22 width=%22100%22 height=%22100%22/%3E%3Ccircle fill=%22%23333%22 cx=%2250%22 cy=%2235%22 r=%2220%22/%3E%3Cellipse fill=%22%23333%22 cx=%2250%22 cy=%2280%22 rx=%2230%22 ry=%2225%22/%3E%3C/svg%3E'"></div>
+        <div class="player-info">
+          <div class="player-name">${p.name}</div>
+          <div class="player-pos">${p.pos} · ${p.team}</div>
+        </div>
+        <div class="player-season-tag">${season.slice(2)}</div>
+        ${isSelected ? `<div class="selected-badge">✓</div>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function isPlayerSelected(id, team) {
+  const t = state.teams[team];
+  return t.starters.some(p => p.id === id) || t.bench.some(p => p.id === id);
+}
+
+function isPlayerUsedByOther(p) {
+  // Check if same base player name used in either team
+  const baseName = getPlayerBaseName(p);
+  for (const team of ['a','b']) {
+    const t = state.teams[team];
+    const all = [...t.starters, ...t.bench];
+    for (const ep of all) {
+      if (ep.id !== p.id && getPlayerBaseName(ep) === baseName) return true;
+    }
+  }
+  return false;
+}
+
+function selectPlayer(playerId, team, season) {
+  const data = ALL_NBA_DATA[season];
+  if (!data) return;
+  const allPlayers = [...data.first, ...data.second, ...data.third];
+  const player = allPlayers.find(p => p.id === playerId);
+  if (!player) return;
+
+  const t = state.teams[team];
+  const totalSelected = t.starters.length + t.bench.length;
+
+  // Check if already selected -> deselect
+  const starterIdx = t.starters.findIndex(p => p.id === playerId);
+  const benchIdx = t.bench.findIndex(p => p.id === playerId);
+  if (starterIdx >= 0 || benchIdx >= 0) {
+    if (starterIdx >= 0) t.starters.splice(starterIdx, 1);
+    else t.bench.splice(benchIdx, 1);
+    refreshAllnba(team);
+    renderLineupSlots(team);
+    updateSimBtn();
+    return;
+  }
+
+  // Check same player name (different season) duplicate
+  const baseName = getPlayerBaseName(player);
+  const otherTeam = team === 'a' ? 'b' : 'a';
+  const allBothTeams = [...state.teams.a.starters, ...state.teams.a.bench, ...state.teams.b.starters, ...state.teams.b.bench];
+  for (const ep of allBothTeams) {
+    if (ep.id !== player.id && getPlayerBaseName(ep) === baseName) {
+      showToast(`❌ ${player.name} is already in a lineup! Same player can't be on both teams.`);
+      return;
+    }
+  }
+  // Check same team same player
+  const teamAll = [...t.starters, ...t.bench];
+  for (const ep of teamAll) {
+    if (getPlayerBaseName(ep) === baseName) {
+      showToast(`❌ ${player.name} already selected in Team ${team.toUpperCase()}!`);
+      return;
+    }
+  }
+
+  const p = { ...player, season };
+
+  if (t.starters.length < 5) {
+    t.starters.push(p);
+  } else if (t.bench.length < 3) {
+    t.bench.push(p);
+  } else {
+    showToast('Team is full! (5 starters + 3 bench)');
+    return;
+  }
+
+  refreshAllnba(team);
+  renderLineupSlots(team);
+  updateSimBtn();
+}
+
+function refreshAllnba(team) {
+  const season = document.getElementById('season-' + team).value;
+  if (season) loadSeason(team);
+}
+
+// ============================================================
+//  LINEUP SLOTS
+// ============================================================
+function renderLineupSlots(team) {
+  const t = state.teams[team];
+  const startEl = document.getElementById('starters-' + team);
+  const benchEl = document.getElementById('bench-' + team);
+
+  startEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const p = t.starters[i];
+    if (p) {
+      startEl.innerHTML += `<div class="lineup-slot filled" onclick="removeFromSlot('${team}','starter',${i})">
+        <button class="remove-btn">×</button>
+        <img class="slot-img" src="${getPlayerImg(p)}" onerror="this.style.display='none'" alt="">
+        <div class="slot-name">${p.name}</div>
+        <div class="slot-season">${p.season}</div>
+      </div>`;
+    } else {
+      const posLabel = ['PG/SG/SF','PG/SG/SF','PG/SG/SF','PF/C','PF/C'][i];
+      startEl.innerHTML += `<div class="lineup-slot">
+        <div class="slot-label">${['BC','BC','BC','FC','FC'][i]}</div>
+        <div class="slot-empty-icon">+</div>
+        <div class="slot-name" style="color:var(--text-muted); font-size:9px;">${posLabel}</div>
+      </div>`;
+    }
+  }
+
+  benchEl.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const p = t.bench[i];
+    if (p) {
+      benchEl.innerHTML += `<div class="lineup-slot filled" onclick="removeFromSlot('${team}','bench',${i})">
+        <button class="remove-btn">×</button>
+        <img class="slot-img" src="${getPlayerImg(p)}" onerror="this.style.display='none'" alt="">
+        <div class="slot-name">${p.name}</div>
+        <div class="slot-season">${p.season}</div>
+      </div>`;
+    } else {
+      benchEl.innerHTML += `<div class="lineup-slot">
+        <div class="slot-label">BN${i+1}</div>
+        <div class="slot-empty-icon">+</div>
+        <div class="slot-name" style="color:var(--text-muted); font-size:9px;">Any Pos</div>
+      </div>`;
+    }
+  }
+}
+
+function removeFromSlot(team, type, idx) {
+  const t = state.teams[team];
+  if (type === 'starter') t.starters.splice(idx, 1);
+  else t.bench.splice(idx, 1);
+  refreshAllnba(team);
+  renderLineupSlots(team);
+  updateSimBtn();
+}
+
+function updateSimBtn() {
+  const btn = document.getElementById('btn-go-lineup');
+  const hint = document.getElementById('sim-hint');
+  const a = state.teams.a;
+  const b = state.teams.b;
+  const aFull = a.starters.length === 5 && a.bench.length === 3;
+  const bFull = b.starters.length === 5 && b.bench.length === 3;
+  if (aFull && bFull) {
+    btn.classList.add('ready');
+    hint.textContent = '✅ Both teams ready! Proceed to lineup preview.';
+  } else {
+    btn.classList.remove('ready');
+    const missing = [];
+    if (!aFull) missing.push(`Team A: ${5 - a.starters.length} starter(s), ${3 - a.bench.length} bench`);
+    if (!bFull) missing.push(`Team B: ${5 - b.starters.length} starter(s), ${3 - b.bench.length} bench`);
+    hint.textContent = missing.join(' | ');
+  }
+}
+
+// ============================================================
+//  LINEUP PREVIEW
+// ============================================================
+function goToLineupPreview() {
+  // Validate backcourt/frontcourt for starters
+  for (const team of ['a','b']) {
+    const t = state.teams[team];
+    if (t.starters.length !== 5 || t.bench.length !== 3) {
+      showToast(`Team ${team.toUpperCase()} lineup incomplete!`);
+      return;
+    }
+    const bcPositions = ['PG','SG','SF'];
+    const fcPositions = ['PF','C'];
+    let bc = t.starters.filter(p => bcPositions.includes(p.pos)).length;
+    let fc = t.starters.filter(p => fcPositions.includes(p.pos)).length;
+    if (bc < 2 || fc < 1 || fc > 2 || bc > 4) {
+      showToast(`Team ${team.toUpperCase()}: Starters need 3 Backcourt (PG/SG/SF) + 2 Frontcourt (PF/C). Current: ${bc} BC / ${fc} FC.`);
+      return;
+    }
+  }
+
+  renderLineupPreview();
+  showScreen('lineup');
+}
+
+function renderLineupPreview() {
+  const body = document.getElementById('lineup-preview-body');
+  body.innerHTML = '';
+  ['a','b'].forEach(team => {
+    const t = state.teams[team];
+    const color = team === 'a' ? '#4a90d9' : '#e55';
+    let html = `<div class="lineup-preview-team">
+      <div class="lp-team-title" style="color:${color}">TEAM ${team.toUpperCase()}</div>
+      <div class="lp-section-label">⚡ Starting Five</div>
+      <div class="lp-players-row">`;
+    t.starters.forEach(p => {
+      html += `<div class="lp-player-card">
+        <img src="${getPlayerImg(p)}" onerror="this.style.display='none'" alt="${p.name}">
+        <div class="lp-name">${p.name}</div>
+        <div class="lp-pos">${p.pos}</div>
+        <div class="lp-season">${p.season}</div>
+      </div>`;
+    });
+    html += `</div><div class="lp-section-label">🏀 Bench</div><div class="lp-players-row">`;
+    t.bench.forEach(p => {
+      html += `<div class="lp-player-card">
+        <img src="${getPlayerImg(p)}" onerror="this.style.display='none'" alt="${p.name}">
+        <div class="lp-name">${p.name}</div>
+        <div class="lp-pos">${p.pos}</div>
+        <div class="lp-season">${p.season}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+    body.innerHTML += html;
+  });
+}
+
+// ============================================================
+//  GAME SIMULATION ENGINE
+// ============================================================
+
+function startGame() {
+  showScreen('game');
+  // Reset scoreboard
+  ['a','b'].forEach(t => {
+    [1,2,3,4,'ot'].forEach(q => {
+      const el = document.getElementById(`sc-${t}-${q}`);
+      if(el) { el.textContent = '-'; el.className = 'q-cell pending'; }
+    });
+    document.getElementById(`sc-${t}-total`).textContent = '0';
+  });
+  document.getElementById('ot-header').style.display = 'none';
+  document.querySelectorAll('.ot-cell').forEach(e => e.style.display = 'none');
+  document.getElementById('btn-end-game').style.display = 'none';
+  document.getElementById('pbp-feed').innerHTML = '';
+  document.getElementById('game-status').className = 'game-status-bar blinking';
+
+  // Display team player names
+  document.getElementById('g-team-a-players').innerHTML = state.teams.a.starters.map(p => p.name.split(' ').pop()).join(' · ');
+  document.getElementById('g-team-b-players').innerHTML = state.teams.b.starters.map(p => p.name.split(' ').pop()).join(' · ');
+
+  simulateGame();
+}
+
+function simulateGame() {
+  // ---- Compute player ratings ----
+  function playerRating(p) {
+    const s = p.stats;
+    // Composite offensive rating
+    const offRating = s.pts * 1.0 + s.ast * 0.7 + s.fg_pct * 20 + s.three_pct * 10;
+    const defRating = s.reb * 0.5 + s.blk * 2 + s.stl * 2;
+    const allRound = (offRating + defRating) * (s.mp_rating / 100);
+    return allRound;
+  }
+
+  // ---- Quarter scoring: realistic NBA pace ----
+  // Normal quarter: ~25-32 points per team
+  // Each player minutes allocation
+  function generateQuarterScores(teamA, teamB) {
+    const rA = playerRating(teamA.starters[0]) + playerRating(teamA.starters[1]) + playerRating(teamA.starters[2]) + playerRating(teamA.starters[3]) + playerRating(teamA.starters[4]);
+    const rB = playerRating(teamB.starters[0]) + playerRating(teamB.starters[1]) + playerRating(teamB.starters[2]) + playerRating(teamB.starters[3]) + playerRating(teamB.starters[4]);
+    // Include bench
+    const rbA = teamA.bench.reduce((s, p) => s + playerRating(p), 0) * 0.4;
+    const rbB = teamB.bench.reduce((s, p) => s + playerRating(p), 0) * 0.4;
+    const totalA = rA + rbA;
+    const totalB = rB + rbB;
+    const advantage = (totalA - totalB) / (totalA + totalB); // [-0.5, 0.5]
+
+    let quarters = [];
+    let totalScoreA = 0, totalScoreB = 0;
+    for (let q = 0; q < 4; q++) {
+      // Base quarter scores
+      const baseQ = rng(22, 32);
+      const noise = rng(-4, 4);
+      const qA = Math.round(baseQ + advantage * 8 + noise + rng(-3, 3));
+      const qB = Math.round(baseQ - advantage * 8 - noise + rng(-3, 3));
+      quarters.push({ a: Math.max(12, qA), b: Math.max(12, qB) });
+      totalScoreA += Math.max(12, qA);
+      totalScoreB += Math.max(12, qB);
+    }
+
+    let ot = null;
+    if (totalScoreA === totalScoreB) {
+      const otBase = rng(8, 16);
+      const otA = Math.round(otBase + advantage * 3 + rng(-3, 3));
+      const otB = Math.round(otBase - advantage * 3 + rng(-3, 3));
+      ot = { a: Math.max(4, otA), b: Math.max(4, otB) };
+      // Ensure no tie in OT
+      if (ot.a === ot.b) ot.a++;
+    }
+    return { quarters, ot };
+  }
+
+  // ---- Generate box scores ----
+  function generateBoxScore(team, teamScore, isWinner) {
+    const allPlayers = [...team.starters, ...team.bench];
+    const totalPts = teamScore;
+
+    // Minutes distribution: starters get more
+    // Total = 240 mins for 5 starters + bench (48 min x 5 players)
+    // Actually: 5 starters * ~32 min, 3 bench * ~10 min = 190 total
+    const starterMins = [36, 34, 34, 32, 30].map(m => m + rngInt(-3, 3));
+    const benchMins = [14, 11, 8].map(m => m + rngInt(-2, 3));
+    const allMins = [...starterMins, ...benchMins];
+
+    // Distribute points proportionally to scoring ability + some noise
+    const scoringWeights = allPlayers.map((p, i) => {
+      const base = p.stats.pts * (allMins[i] / 36);
+      return Math.max(0.5, base + rng(-3, 3));
+    });
+    const totalWeight = scoringWeights.reduce((a, b) => a + b, 0);
+
+    let playerStats = allPlayers.map((p, i) => {
+      const fracPts = scoringWeights[i] / totalWeight;
+      const pts = Math.max(0, Math.round(totalPts * fracPts + rng(-2, 2)));
+      const min = allMins[i];
+      const minFrac = min / 36;
+
+      // FGA based on pts
+      const ftRate = rng(0.05, 0.25);
+      const threeRate = Math.min(0.45, p.stats.three_pct > 0.3 ? rng(0.25, 0.45) : rng(0.05, 0.15));
+      const ftMade = Math.max(0, Math.round(pts * ftRate));
+      const threeMade = Math.max(0, Math.round(pts * threeRate / 3));
+      const twoMade = Math.max(0, Math.round((pts - ftMade - threeMade * 3) / 2));
+      const fgMade = twoMade + threeMade;
+      const fgpct = p.stats.fg_pct + rng(-0.06, 0.06);
+      const fgAtt = Math.max(fgMade, Math.round(fgMade / Math.max(0.25, fgpct)));
+      const threeAtt = Math.max(threeMade, Math.round(threeMade / Math.max(0.2, p.stats.three_pct > 0 ? p.stats.three_pct + rng(-0.08, 0.08) : 0.33)));
+
+      const reb = Math.max(0, Math.round(p.stats.reb * minFrac + rng(-1.5, 1.5)));
+      const ast = Math.max(0, Math.round(p.stats.ast * minFrac + rng(-1.5, 1.5)));
+      const orb = Math.max(0, Math.round(p.stats.orb * minFrac + rng(-0.5, 0.8)));
+      const drb = Math.max(orb, reb - orb);
+      const blk = Math.max(0, Math.round(p.stats.blk * minFrac + rng(-0.3, 0.5)));
+      const stl = Math.max(0, Math.round(p.stats.stl * minFrac + rng(-0.3, 0.5)));
+      const to = Math.max(0, Math.round(p.stats.to * minFrac * rng(0.6, 1.4)));
+      const pm = Math.round(rng(-12, 12) + (isWinner ? rng(0, 5) : rng(-5, 0)));
+
+      return {
+        player: p,
+        min,
+        pts: Math.max(0, pts),
+        fgMade, fgAtt,
+        threeMade, threeAtt,
+        ftMade, ftAtt: Math.max(ftMade, Math.round(ftMade / Math.max(0.4, rng(0.55, 0.95)))),
+        reb, orb, drb,
+        ast, blk, stl, to, pm
+      };
+    });
+
+    // Adjust so team totals match score
+    const currentTotal = playerStats.reduce((s, p) => s + p.pts, 0);
+    const diff = totalPts - currentTotal;
+    if (diff !== 0 && playerStats.length > 0) {
+      // distribute diff to highest scorers
+      const sorted = [...playerStats].sort((a, b) => b.pts - a.pts);
+      let rem = diff;
+      for (let i = 0; i < sorted.length && rem !== 0; i++) {
+        const add = rem > 0 ? 1 : -1;
+        sorted[i].pts = Math.max(0, sorted[i].pts + add);
+        rem -= add;
+      }
+    }
+
+    return playerStats;
+  }
+
+  // Run simulation
+  const scoreData = generateQuarterScores(state.teams.a, state.teams.b);
+  const { quarters, ot } = scoreData;
+  const totalA = quarters.reduce((s, q) => s + q.a, 0) + (ot ? ot.a : 0);
+  const totalB = quarters.reduce((s, q) => s + q.b, 0) + (ot ? ot.b : 0);
+  const isAWinner = totalA > totalB;
+  const boxA = generateBoxScore(state.teams.a, totalA, isAWinner);
+  const boxB = generateBoxScore(state.teams.b, totalB, !isAWinner);
+
+  state.gameResult = { quarters, ot, totalA, totalB, boxA, boxB, isAWinner };
+
+  // ---- Animate scoreboard ----
+  animateGame(quarters, ot, totalA, totalB, boxA, boxB);
+}
+
+async function animateGame(quarters, ot, totalA, totalB, boxA, boxB) {
+  const status = document.getElementById('game-status');
+  const pbp = document.getElementById('pbp-feed');
+
+  function addPBP(text, type = '') {
+    const div = document.createElement('div');
+    div.className = 'pbp-line ' + type;
+    div.innerHTML = text;
+    pbp.appendChild(div);
+    pbp.scrollTop = pbp.scrollHeight;
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function setQCell(team, q, val, cls) {
+    const el = document.getElementById(`sc-${team}-${q}`);
+    if (el) { el.textContent = val; el.className = 'q-cell ' + cls; }
+  }
+  function setTotal(team, val) {
+    document.getElementById(`sc-${team}-total`).textContent = val;
+  }
+
+  // PBP player name helper
+  function pickPlayer(box, topN = 5) {
+    const sorted = [...box].sort((a,b) => b.pts - a.pts);
+    const pool = sorted.slice(0, topN);
+    return pool[rngInt(0, pool.length - 1)].player.name.split(' ').pop();
+  }
+  function pickPlayerFull(box) {
+    return box[rngInt(0, box.length - 1)].player.name.split(' ').pop();
+  }
+
+  const qNames = ['1ST QUARTER','2ND QUARTER','3RD QUARTER','4TH QUARTER'];
+  let cumA = 0, cumB = 0;
+
+  for (let qi = 0; qi < 4; qi++) {
+    const q = qi + 1;
+    status.textContent = `${qNames[qi]} IN PROGRESS...`;
+    setQCell('a', q, '...', 'active');
+    setQCell('b', q, '...', 'active');
+
+    addPBP(`--- ${qNames[qi]} START ---`, 'highlight');
+    await sleep(400);
+
+    // Simulate score ticking up
+    const target = quarters[qi];
+    const steps = rngInt(8, 14);
+    let runA = 0, runB = 0;
+
+    for (let step = 0; step < steps; step++) {
+      const stepA = Math.round(target.a * (step + 1) / steps) - runA;
+      const stepB = Math.round(target.b * (step + 1) / steps) - runB;
+      runA += stepA;
+      runB += stepB;
+
+      setQCell('a', q, cumA + runA, 'active');
+      setQCell('b', q, cumB + runB, 'active');
+      setTotal('a', cumA + runA);
+      setTotal('b', cumB + runB);
+
+      // PBP events
+      const evtRoll = Math.random();
+      const pA = pickPlayer(boxA);
+      const pB = pickPlayer(boxB);
+      if (evtRoll < 0.3) {
+        const events = [
+          `<span class="team-a-color">${pA}</span> scores on mid-range jumper — <b>${cumA+runA} : ${cumB+runB}</b>`,
+          `<span class="team-b-color">${pB}</span> drives to basket, layup GOOD — <b>${cumA+runA} : ${cumB+runB}</b>`,
+          `<span class="team-a-color">${pA}</span> buries the three! — <b>${cumA+runA} : ${cumB+runB}</b>`,
+          `<span class="team-b-color">${pB}</span> finds open corner three — SPLASH — <b>${cumA+runA} : ${cumB+runB}</b>`,
+          `<span class="team-a-color">${pickPlayerFull(boxA)}</span> dimes up <span class="team-a-color">${pA}</span> — easy bucket`,
+          `<span class="team-b-color">${pB}</span> posterizes at the rim! Foul drawn`,
+        ];
+        addPBP(events[rngInt(0, events.length - 1)], 'score');
+      } else if (evtRoll < 0.55) {
+        const def = [
+          `<span class="team-b-color">${pickPlayer(boxB, 3)}</span> rejects the shot — blocks it out of bounds`,
+          `<span class="team-a-color">${pickPlayer(boxA, 3)}</span> strips the ball — STEAL, fast break`,
+          `Turnover by <span class="team-b-color">${pB}</span> — loose ball recovered`,
+          `Missed 3 by <span class="team-a-color">${pA}</span>, long rebound`,
+        ];
+        addPBP(def[rngInt(0, def.length - 1)]);
+      }
+
+      await sleep(rngInt(200, 380));
+    }
+
+    cumA += target.a;
+    cumB += target.b;
+    setQCell('a', q, target.a, 'done');
+    setQCell('b', q, target.b, 'done');
+    setTotal('a', cumA);
+    setTotal('b', cumB);
+
+    addPBP(`--- END OF ${qNames[qi]}: A ${cumA} — B ${cumB} ---`, 'highlight');
+    await sleep(600);
+  }
+
+  // OT
+  if (ot) {
+    document.getElementById('ot-header').style.display = '';
+    document.querySelectorAll('.ot-cell').forEach(e => e.style.display = '');
+    status.textContent = 'OVERTIME IN PROGRESS...';
+    setQCell('a', 'ot', '...', 'active ot-label');
+    setQCell('b', 'ot', '...', 'active ot-label');
+    addPBP('--- OVERTIME! GAME TIED — EXTRA PERIOD ---', 'highlight');
+    await sleep(500);
+
+    const steps = rngInt(5, 9);
+    let runA = 0, runB = 0;
+    for (let step = 0; step < steps; step++) {
+      const sA = Math.round(ot.a * (step + 1) / steps) - runA;
+      const sB = Math.round(ot.b * (step + 1) / steps) - runB;
+      runA += sA;
+      runB += sB;
+      setQCell('a', 'ot', cumA + runA, 'active ot-label');
+      setQCell('b', 'ot', cumB + runB, 'active ot-label');
+      setTotal('a', cumA + runA);
+      setTotal('b', cumB + runB);
+      await sleep(350);
+    }
+    cumA += ot.a;
+    cumB += ot.b;
+    setQCell('a', 'ot', ot.a, 'done');
+    setQCell('b', 'ot', ot.b, 'done');
+    setTotal('a', cumA);
+    setTotal('b', cumB);
+    addPBP(`--- OVERTIME FINAL: A ${cumA} — B ${cumB} ---`, 'highlight');
+    await sleep(500);
+  }
+
+  status.classList.remove('blinking');
+  status.textContent = `🏆 FINAL: TEAM ${cumA > cumB ? 'A' : 'B'} WINS ${Math.max(cumA, cumB)} - ${Math.min(cumA, cumB)}`;
+  document.getElementById('btn-end-game').style.display = 'block';
+}
+
+// ============================================================
+//  RESULTS SCREEN
+// ============================================================
+function goToResults() {
+  const r = state.gameResult;
+  if (!r) return;
+
+  const winnerEl = document.getElementById('winner-text');
+  const scoreEl = document.getElementById('final-score');
+  winnerEl.textContent = r.isAWinner ? '🏆 TEAM A WINS' : '🏆 TEAM B WINS';
+  winnerEl.className = 'winner-announcement ' + (r.isAWinner ? 'a-win' : 'b-win');
+  scoreEl.textContent = `${r.totalA} — ${r.totalB}`;
+  if (r.ot) {
+    scoreEl.innerHTML += ` <span style="font-size:0.5em; color:var(--accent-gold); letter-spacing:2px;">OT</span>`;
+  }
+
+  renderBoxScore(r);
+  showScreen('results');
+}
+
+function renderBoxScore(r) {
+  const section = document.getElementById('boxscore-section');
+  let html = '';
+
+  function buildTable(boxStats, teamLabel, teamClass) {
+    html += `<div class="boxscore-team-title ${teamClass}">${teamLabel}</div>`;
+    html += `<div class="boxscore-wrap"><table class="boxscore-table">
+      <thead><tr>
+        <th class="name-col">PLAYER</th>
+        <th>POS</th>
+        <th>MIN</th>
+        <th class="pts-col">PTS</th>
+        <th>REB</th>
+        <th>AST</th>
+        <th>FGM-A</th>
+        <th>FG%</th>
+        <th>3PM-A</th>
+        <th>3P%</th>
+        <th>FTM-A</th>
+        <th>OREB</th>
+        <th>DREB</th>
+        <th>BLK</th>
+        <th>STL</th>
+        <th>TO</th>
+        <th>+/-</th>
+      </tr></thead><tbody>`;
+
+    let totPts=0, totReb=0, totAst=0, totFgm=0, totFga=0, tot3m=0, tot3a=0, totFtm=0, totFta=0, totOrb=0, totDrb=0, totBlk=0, totStl=0, totTo=0;
+
+    boxStats.forEach(s => {
+      const fgpct = s.fgAtt > 0 ? (s.fgMade / s.fgAtt * 100).toFixed(1) : '-';
+      const tpct = s.threeAtt > 0 ? (s.threeMade / s.threeAtt * 100).toFixed(1) : '-';
+      const pm = s.pm >= 0 ? '+' + s.pm : s.pm;
+      html += `<tr>
+        <td class="name-col">${s.player.name} <span style="color:var(--accent-gold);font-size:10px;">${s.player.season}</span></td>
+        <td class="pos-col">${s.player.pos}</td>
+        <td>${s.min}</td>
+        <td class="pts-col">${s.pts}</td>
+        <td>${s.reb}</td>
+        <td>${s.ast}</td>
+        <td>${s.fgMade}-${s.fgAtt}</td>
+        <td>${fgpct}${fgpct !== '-' ? '%' : ''}</td>
+        <td>${s.threeMade}-${s.threeAtt}</td>
+        <td>${tpct}${tpct !== '-' ? '%' : ''}</td>
+        <td>${s.ftMade}-${s.ftAtt}</td>
+        <td>${s.orb}</td>
+        <td>${s.drb}</td>
+        <td>${s.blk}</td>
+        <td>${s.stl}</td>
+        <td>${s.to}</td>
+        <td style="color:${s.pm >= 0 ? '#4aaa4a' : '#e55'}">${pm}</td>
+      </tr>`;
+      totPts+=s.pts; totReb+=s.reb; totAst+=s.ast; totFgm+=s.fgMade; totFga+=s.fgAtt;
+      tot3m+=s.threeMade; tot3a+=s.threeAtt; totFtm+=s.ftMade; totFta+=s.ftAtt;
+      totOrb+=s.orb; totDrb+=s.drb; totBlk+=s.blk; totStl+=s.stl; totTo+=s.to;
+    });
+
+    const totFgpct = totFga > 0 ? (totFgm/totFga*100).toFixed(1)+'%' : '-';
+    const tot3pct = tot3a > 0 ? (tot3m/tot3a*100).toFixed(1)+'%' : '-';
+    html += `<tr class="total-row">
+      <td class="name-col" style="color:var(--accent-gold);">TEAM TOTAL</td>
+      <td>-</td><td>-</td>
+      <td class="pts-col">${totPts}</td>
+      <td>${totReb}</td>
+      <td>${totAst}</td>
+      <td>${totFgm}-${totFga}</td>
+      <td>${totFgpct}</td>
+      <td>${tot3m}-${tot3a}</td>
+      <td>${tot3pct}</td>
+      <td>${totFtm}-${totFta}</td>
+      <td>${totOrb}</td>
+      <td>${totDrb}</td>
+      <td>${totBlk}</td>
+      <td>${totStl}</td>
+      <td>${totTo}</td>
+      <td>-</td>
+    </tr>`;
+
+    html += `</tbody></table></div>`;
+  }
+
+  buildTable(r.boxA, '🔵 TEAM A', 'a');
+  buildTable(r.boxB, '🔴 TEAM B', 'b');
+  section.innerHTML = html;
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+init();
+</script>
+</body>
+</html>
